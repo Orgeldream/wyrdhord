@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GINUNG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --accent-color: #a0a0a0;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Josefin Sans', sans-serif;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+        }
+
+        .title-block {
+            text-align: left;
+            opacity: 0.8;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+        }
+
+        .toggle-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            padding: 10px 18px;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            text-transform: uppercase;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff;
+        }
+
+        .toggle-btn:active {
+            transform: scale(0.96);
+        }
+
+        .toggle-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #fff;
+        }
+
+        .toggle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #pad-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.02), transparent 70%);
+        }
+
+        #touch-indicator {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.3), inset 0 0 40px rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+        }
+
+        #touch-indicator::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .ripple {
+            position: absolute;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: ripple-expand 1.5s ease-out forwards;
+        }
+
+        @keyframes ripple-expand {
+            0% {
+                width: 20px;
+                height: 20px;
+                opacity: 0.8;
+            }
+
+            100% {
+                width: 300px;
+                height: 300px;
+                opacity: 0;
+            }
+        }
+
+        .crosshair {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.05;
+        }
+
+        .crosshair-h {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3) 50%, transparent);
+        }
+
+        .crosshair-v {
+            top: 0;
+            left: 50%;
+            width: 1px;
+            height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.3) 50%, transparent);
+        }
+
+        .info-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px;
+            pointer-events: auto;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .info-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 8px;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .status-text {
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--glass-border);
+            font-size: 9px;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+        }
+
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 5, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+
+        .start-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 16px 32px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .start-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff;
+        }
+
+        .start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .hint {
+            margin-top: 24px;
+            font-size: 10px;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        .meter-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .meter-bar {
+            width: 4px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            transition: background 0.1s ease;
+        }
+
+        .meter-bar.active {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .mobile-warning {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            font-size: 12px;
+            max-width: 80%;
+        }
+
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1001;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="pad-container">
+        <div class="crosshair crosshair-h"></div>
+        <div class="crosshair crosshair-v"></div>
+        <div id="touch-indicator"></div>
+    </div>
+
+    <div class="ui-layer">
+        <div class="header">
+            <div class="title-block">
+                <div class="title">GINUNG</div>
+                <div class="subtitle">TOUCH FEEDBACK REVERB</div>
+            </div>
+            <button class="toggle-btn" id="toggle-btn">START</button>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-row">
+                <div class="info-item">
+                    <div class="info-label">Delay 1</div>
+                    <div class="info-value" id="val-delay1">--</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Delay 2</div>
+                    <div class="info-value" id="val-delay2">--</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Damping</div>
+                    <div class="info-value" id="val-damping">--</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Feedback</div>
+                    <div class="info-value" id="val-feedback">--</div>
+                </div>
+            </div>
+            <div class="meter-container">
+                <div class="meter-bar" data-index="0"></div>
+                <div class="meter-bar" data-index="1"></div>
+                <div class="meter-bar" data-index="2"></div>
+                <div class="meter-bar" data-index="3"></div>
+                <div class="meter-bar" data-index="4"></div>
+                <div class="meter-bar" data-index="5"></div>
+                <div class="meter-bar" data-index="6"></div>
+                <div class="meter-bar" data-index="7"></div>
+                <div class="meter-bar" data-index="8"></div>
+                <div class="meter-bar" data-index="9"></div>
+            </div>
+            <div class="status-text" id="status-text">READY</div>
+        </div>
+    </div>
+
+    <div id="start-overlay">
+        <button class="start-btn" id="start-btn">INITIALISE</button>
+        <div class="hint">
+            TOUCH-ACTIVATED FEEDBACK REVERB<br>
+            STIMULATE THE MIC<br>
+            DRAG TO EXPLORE FEEDBACK SPACE
+        </div>
+        <div class="hint" style="margin-top: 10px; color: #ff6b6b; font-size: 9px;">
+            ALLOW MICROPHONE ACCESS WHEN PROMPTED<br>
+            TURN YOUR SPEAKER UP TO MAXIMUM<br>
+            TOUCH SCREEN TO ACTIVATE FEEDBACK
+        </div>
+    </div>
+
+    <div id="mobile-warning" class="mobile-warning">
+        Please allow microphone access when prompted.<br>
+        Touch screen to activate feedback.
+    </div>
+
+    <div id="loading" class="loading">
+        <div class="hint">INITIALIZING AUDIO...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script>
+        let isActive = false;
+        let audioInitialized = false;
+        let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let isTouching = false;
+
+        const pad = document.getElementById('pad-container');
+        const indicator = document.getElementById('touch-indicator');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const statusText = document.getElementById('status-text');
+        const mobileWarning = document.getElementById('mobile-warning');
+        const loading = document.getElementById('loading');
+
+        let microphone, micFilter, limiter, meter;
+        let delayLines = [];
+        let dampingFilters = [];
+        let allpassFilters = [];
+        let feedbackGain, mainGain, inputGain, outputGain;
+        let feedbackEnvelope, inputEnvelope;
+
+        const numDelays = 8;
+
+        async function initAudio() {
+            if (audioInitialized) {
+                console.log('Audio already initialized');
+                return;
+            }
+
+            try {
+                loading.style.display = 'block';
+                statusText.textContent = 'INITIALIZING...';
+
+                console.log('Starting Tone.js initialization...');
+
+                await Tone.start();
+                console.log('Audio context started successfully');
+                console.log('Tone context state:', Tone.context.state);
+
+                createAudioNodes();
+                console.log('Audio nodes created');
+
+                audioInitialized = true;
+                statusText.textContent = 'READY - CLICK START';
+                loading.style.display = 'none';
+
+                console.log('Audio fully initialized');
+
+                requestAnimationFrame(updateMeter);
+
+                return true;
+
+            } catch (error) {
+                console.error('Audio initialization failed:', error);
+                console.error('Error details:', error.message);
+                console.error('Error stack:', error.stack);
+                statusText.textContent = 'INIT FAILED: ' + error.message;
+                loading.style.display = 'none';
+                throw error;
+            }
+        }
+
+        function createAudioNodes() {
+            console.log('Creating audio nodes...');
+
+            microphone = new Tone.UserMedia();
+            console.log('Microphone created');
+
+            const filterFreq = isMobile ? 2500 : 1200;
+            micFilter = new Tone.Filter({
+                frequency: filterFreq,
+                type: 'lowpass',
+                rolloff: -24
+            });
+            console.log('Mic filter created with frequency:', filterFreq);
+
+            feedbackEnvelope = new Tone.Gain(0.0);
+            inputEnvelope = new Tone.Gain(0.0);
+            console.log('Envelopes created');
+
+            const gainMultiplier = isMobile ? 2.5 : 1.0;
+            inputGain = new Tone.Gain(1.5 * gainMultiplier);
+            feedbackGain = new Tone.Gain(0.85);
+            mainGain = new Tone.Gain(1.2 * gainMultiplier);
+            outputGain = new Tone.Gain(1.5 * gainMultiplier);
+            console.log('Gain nodes created (mobile multiplier:', gainMultiplier + ')');
+
+            for (let i = 0; i < numDelays; i++) {
+                const baseTime = 0.02 + (i / numDelays) * 0.2;
+
+                const delay = new Tone.Delay({
+                    delayTime: baseTime,
+                    maxDelay: 2.0
+                });
+
+                const damping = new Tone.Filter({
+                    frequency: 1500,
+                    type: 'lowpass',
+                    rolloff: -24
+                });
+
+                const allpass = new Tone.Filter({
+                    frequency: 300 + i * 150,
+                    type: 'allpass',
+                    Q: 1.5
+                });
+
+                delayLines.push(delay);
+                dampingFilters.push(damping);
+                allpassFilters.push(allpass);
+            }
+            console.log('Delay lines created:', numDelays);
+
+            const delayMixer = new Tone.Gain(1.0 / numDelays);
+
+            microphone.connect(micFilter);
+            micFilter.connect(inputEnvelope);
+            inputEnvelope.connect(inputGain);
+            inputGain.connect(feedbackEnvelope);
+            feedbackEnvelope.connect(feedbackGain);
+
+            delayLines.forEach((delay, i) => {
+                feedbackGain.connect(delay);
+                delay.connect(allpassFilters[i]);
+                allpassFilters[i].connect(dampingFilters[i]);
+                dampingFilters[i].connect(delayMixer);
+            });
+
+            delayMixer.connect(feedbackGain);
+            delayMixer.connect(mainGain);
+
+            const compressor = new Tone.Compressor({
+                threshold: -12,
+                ratio: 8,
+                attack: 0.003,
+                release: 0.1,
+                knee: 6
+            });
+
+            limiter = new Tone.Limiter(-0.5);
+
+            mainGain.chain(compressor, outputGain, limiter, Tone.Destination);
+
+            meter = new Tone.Meter();
+            mainGain.connect(meter);
+
+            console.log('All audio nodes connected');
+        }
+
+        function updateMeter() {
+            if (!meter) {
+                requestAnimationFrame(updateMeter);
+                return;
+            }
+
+            try {
+                const level = meter.getValue();
+                const normalized = Math.max(0, Math.min(1, (level + 60) / 60));
+
+                const bars = document.querySelectorAll('.meter-bar');
+                bars.forEach((bar, i) => {
+                    bar.classList.toggle('active', normalized > i / bars.length);
+                });
+            } catch (e) {
+            }
+
+            requestAnimationFrame(updateMeter);
+        }
+
+        function startTouch() {
+            if (!isActive || !audioInitialized) return;
+
+            isTouching = true;
+
+            const touchGain = isMobile ? 1.5 : 1.0;
+            const feedbackTouch = isMobile ? 0.95 : 0.92;
+
+            feedbackEnvelope.gain.rampTo(touchGain, 0.1);
+            inputEnvelope.gain.rampTo(touchGain, 0.2);
+
+            feedbackGain.gain.rampTo(feedbackTouch, 0.3);
+
+            statusText.textContent = 'ACTIVE - TOUCHING';
+            console.log('Touch started, gains increased (mobile:', isMobile + ')');
+        }
+
+        function endTouch() {
+            if (!isActive || !audioInitialized) return;
+
+            isTouching = false;
+
+            feedbackEnvelope.gain.rampTo(0.0, 0.01);
+            inputEnvelope.gain.rampTo(0.0, 0.02);
+
+            feedbackGain.gain.rampTo(0.85, 0.2);
+
+            statusText.textContent = 'ACTIVE - READY';
+        }
+
+        async function toggleFeedback() {
+            if (!audioInitialized) {
+                statusText.textContent = 'NOT INITIALIZED';
+                console.error('Attempted to toggle feedback before initialization');
+                return;
+            }
+
+            if (!isActive) {
+                try {
+                    statusText.textContent = 'STARTING MIC...';
+                    console.log('Opening microphone...');
+
+                    const timeout = isMobile ? 10000 : 5000;
+                    const micPromise = microphone.open();
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Microphone timeout')), timeout)
+                    );
+
+                    await Promise.race([micPromise, timeoutPromise]);
+
+                    console.log('Microphone opened successfully');
+
+                    if (isMobile) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        console.log('Mobile mic warm-up complete');
+                    }
+
+                    isActive = true;
+                    toggleBtn.textContent = 'STOP';
+                    toggleBtn.classList.add('active');
+                    statusText.textContent = 'ACTIVE - TOUCH TO ACTIVATE';
+
+                    feedbackEnvelope.gain.value = 0.0;
+                    inputEnvelope.gain.value = 0.0;
+
+                } catch (error) {
+                    console.error('Microphone error:', error);
+
+                    if (error.message.includes('timeout') || error.name === 'TimeoutError') {
+                        statusText.textContent = 'MIC TIMEOUT - TRY AGAIN';
+                    } else if (error.name === 'NotAllowedError') {
+                        statusText.textContent = 'MIC ACCESS DENIED';
+                        if (isMobile) {
+                            mobileWarning.textContent = 'Microphone access denied. Please check browser permissions.';
+                            mobileWarning.style.display = 'block';
+                            setTimeout(() => mobileWarning.style.display = 'none', 4000);
+                        }
+                    } else {
+                        statusText.textContent = 'MIC ERROR - RELOAD';
+                    }
+
+                    isActive = false;
+                    toggleBtn.textContent = 'START';
+                    toggleBtn.classList.remove('active');
+                }
+            } else {
+                try {
+                    console.log('Closing microphone...');
+                    await microphone.close();
+                } catch (e) {
+                    console.log('Microphone already closed');
+                }
+
+                isActive = false;
+                isTouching = false;
+                toggleBtn.textContent = 'START';
+                toggleBtn.classList.remove('active');
+                statusText.textContent = 'STOPPED';
+                resetParameters();
+            }
+        }
+
+        function resetParameters() {
+            document.getElementById('val-delay1').textContent = '--';
+            document.getElementById('val-delay2').textContent = '--';
+            document.getElementById('val-damping').textContent = '--';
+            document.getElementById('val-feedback').textContent = '--';
+        }
+
+        function createRipple(x, y) {
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.style.transform = 'translate(-50%, -50%)';
+            pad.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 1500);
+        }
+
+        function updateDelays(x, y) {
+            if (!isActive || !isTouching) return;
+
+            const w = pad.offsetWidth, h = pad.offsetHeight;
+            const xN = x / w, yN = y / h;
+
+            delayLines.forEach((delay, i) => {
+                const angle = (i / numDelays) * Math.PI * 2;
+                const xMod = Math.sin(angle + xN * Math.PI * 4);
+                const yMod = Math.cos(angle + yN * Math.PI * 4);
+                const offset = xMod * yMod * 0.8;
+
+                const delayTime = 0.02 + (0.5 + offset * 0.5) * 0.78;
+                delay.delayTime.rampTo(delayTime, 0.1);
+            });
+
+            document.getElementById('val-delay1').textContent = Math.round(delayLines[0].delayTime.value * 1000) + 'ms';
+            document.getElementById('val-delay2').textContent = Math.round(delayLines[1].delayTime.value * 1000) + 'ms';
+
+            const dampingFreq = 300 + (1 - yN) * 1700;
+            dampingFilters.forEach(filter => {
+                filter.frequency.rampTo(dampingFreq, 0.08);
+            });
+            document.getElementById('val-damping').textContent = Math.round(dampingFreq) + 'Hz';
+
+            const inputFilterFreq = 400 + (1 - yN) * 1400;
+            micFilter.frequency.rampTo(inputFilterFreq, 0.08);
+
+            const centerX = 0.5, centerY = 0.5;
+            const distFromCenter = Math.sqrt(Math.pow(xN - centerX, 2) + Math.pow(yN - centerY, 2));
+            const feedbackBase = isMobile ? 0.92 : 0.9;
+            const feedbackRange = isMobile ? 0.12 : 0.08;
+            const feedbackAdjust = feedbackBase + distFromCenter * feedbackRange;
+            feedbackGain.gain.rampTo(feedbackAdjust, 0.15);
+            document.getElementById('val-feedback').textContent = feedbackAdjust.toFixed(2);
+
+            allpassFilters.forEach((filter, i) => {
+                const freqBase = 200 + xN * 1000 + (i / numDelays) * 600;
+                filter.frequency.rampTo(freqBase, 0.1);
+            });
+
+            const outputLevel = 0.3 + yN * 0.5;
+            mainGain.gain.rampTo(outputLevel, 0.05);
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0] || e.changedTouches[0];
+            const rect = pad.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            indicator.style.display = 'block';
+            indicator.style.left = x + 'px';
+            indicator.style.top = y + 'px';
+
+            if (e.type === 'touchstart') {
+                createRipple(x, y);
+                startTouch();
+            }
+
+            updateDelays(x, y);
+        }
+
+        function handleMouse(e) {
+            const rect = pad.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            indicator.style.display = 'block';
+            indicator.style.left = x + 'px';
+            indicator.style.top = y + 'px';
+
+            if (e.type === 'mousedown') {
+                createRipple(x, y);
+                startTouch();
+            }
+
+            updateDelays(x, y);
+        }
+
+        pad.addEventListener('touchstart', handleTouch, { passive: false });
+        pad.addEventListener('touchmove', handleTouch, { passive: false });
+        pad.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            indicator.style.display = 'none';
+            endTouch();
+        }, { passive: false });
+
+        pad.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            pad.dataset.mouseDown = 'true';
+            handleMouse(e);
+        });
+        pad.addEventListener('mousemove', (e) => {
+            if (pad.dataset.mouseDown === 'true') handleMouse(e);
+        });
+        pad.addEventListener('mouseup', () => {
+            pad.dataset.mouseDown = 'false';
+            indicator.style.display = 'none';
+            endTouch();
+        });
+        pad.addEventListener('mouseleave', () => {
+            pad.dataset.mouseDown = 'false';
+            indicator.style.display = 'none';
+            endTouch();
+        });
+
+        toggleBtn.addEventListener('click', toggleFeedback);
+
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            console.log('Initialize button clicked');
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = true;
+            startBtn.textContent = 'INITIALIZING...';
+
+            try {
+                await initAudio();
+                console.log('Audio initialized successfully, removing overlay');
+                const overlay = document.getElementById('start-overlay');
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.remove();
+                    console.log('Overlay removed');
+                }, 800);
+            } catch (error) {
+                console.error('Initialization error:', error);
+                console.error('Error details:', error.message);
+                statusText.textContent = 'INIT FAILED: ' + error.message;
+                startBtn.disabled = false;
+                startBtn.textContent = 'TRY AGAIN';
+                alert('Failed to initialize audio:\n\n' + error.message + '\n\nPlease check the console (F12) for more details.');
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isActive) {
+                console.log('Page hidden, stopping feedback');
+                toggleFeedback();
+            }
+        });
+
+        console.log('REVERIE script loaded successfully');
+    </script>
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
+        <button onclick="window.location.href='../index.html'"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
+        <button onclick="randomApp()"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
+    </div>
+    <script>
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                 random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+    </script>
+</body>
+
+</html>

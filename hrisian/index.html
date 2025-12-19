@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HRISIAN - RESONANT BODY</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #888888;
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 24px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            mix-blend-mode: difference;
+        }
+
+        .subtitle {
+            font-weight: 300;
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            pointer-events: auto;
+            width: 100%;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            background: rgba(20, 20, 20, 0.8);
+            padding: 5px;
+            border-radius: 30px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: #666;
+            padding: 10px 20px;
+            font-family: var(--font-main);
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: #fff;
+            color: #000;
+        }
+
+        .param-display {
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .param-display.visible {
+            opacity: 1;
+        }
+
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .start-msg {
+            font-size: 16px;
+            letter-spacing: 4px;
+            animation: pulse 2s infinite;
+            cursor: pointer;
+            text-align: center;
+            padding: 0 20px;
+            text-transform: uppercase;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-layer">
+        <div class="header">
+            <div>
+                <div class="title">Hrisian</div>
+                <div class="subtitle">Resonant Body</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div id="param-display" class="param-display">Damping: 50% | Size: 50% | Reverb: 0% | Room: Medium</div>
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="membrane">Skin</button>
+                <button class="mode-btn" data-mode="tube">Tube</button>
+                <button class="mode-btn" data-mode="plate">Plate</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="start-overlay">
+        <div class="start-msg">Tap to initialise<br><br><span
+                style="font-size: 12px; margin-top: 10px; display: block;">Touch to stimulate<br><br>Left/right: Damping & Reverb Mix<br><br>Up/down: Reverb Size</span></div>
+    </div>
+
+    <script>
+
+        const PHYSICS_MODELS = {
+            plate: {
+                ratios: [1.0, 1.272, 1.618, 2.058, 2.618, 3.330, 4.236, 5.388, 6.854, 8.719],
+                gains: [1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55],
+                q: [150, 160, 170, 180, 190, 200, 210, 220, 230, 240], 
+                baseFreq: 350 
+            },
+            tube: {
+                ratios: [1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0],
+                gains: [1.0, 0.8, 0.6, 0.5, 0.4, 0.3, 0.2],
+                q: [40, 50, 60, 70, 80, 90, 100],
+                baseFreq: 150
+            },
+            membrane: {
+                ratios: [1.0, 1.59, 2.14, 2.30, 2.65, 2.92, 3.16, 3.50, 3.60, 4.06],
+                gains: [1.0, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.2, 0.1],
+                q: [20, 25, 30, 35, 40, 45, 50, 55, 60, 65],
+                baseFreq: 100
+            }
+        };
+
+        class DenseReverb {
+            constructor(ctx) {
+                this.ctx = ctx;
+                this.input = ctx.createGain();
+                this.output = ctx.createGain();
+
+                this.mix = 0.0;
+                this.roomSize = 0.5;
+
+                this.delays = [];
+                this.feedbacks = [];
+                this.lowpasses = [];
+                this.delayGains = [];
+
+                const delayTimes = [41, 67, 97, 139, 173, 211, 251, 293].map(t => t / 1000);
+
+                for (let i = 0; i < 8; i++) {
+                    const delay = ctx.createDelay(3.0);
+                    const feedback = ctx.createGain();
+                    const lowpass = ctx.createBiquadFilter();
+                    const delayGain = ctx.createGain();
+
+                    delay.delayTime.value = delayTimes[i];
+                    feedback.gain.value = 0.7;
+                    lowpass.type = 'lowpass';
+                    lowpass.frequency.value = 4000;
+                    delayGain.gain.value = 0.12; 
+
+                    this.input.connect(delay);
+                    delay.connect(lowpass);
+                    lowpass.connect(feedback);
+                    feedback.connect(delay);
+                    lowpass.connect(delayGain);
+                    delayGain.connect(this.output);
+
+                    this.delays.push(delay);
+                    this.feedbacks.push(feedback);
+                    this.lowpasses.push(lowpass);
+                    this.delayGains.push(delayGain);
+                }
+
+                this.dryGain = ctx.createGain();
+                this.wetGain = ctx.createGain();
+
+                this.input.connect(this.dryGain);
+                this.dryGain.connect(this.output);
+
+                this.output.disconnect();
+                this.dryGain.connect(this.wetGain);
+                this.wetGain.connect(this.output);
+
+                this.updateMix();
+                this.updateRoomSize();
+            }
+
+            setMix(value) {
+                const logMix = value < 0.01 ? 0 : Math.pow(value, 3);
+                this.mix = logMix;
+                this.updateMix();
+            }
+
+            setRoomSize(value) {
+                this.roomSize = value;
+                this.updateRoomSize();
+            }
+
+            updateMix() {
+                const t = this.ctx.currentTime;
+                this.dryGain.gain.setTargetAtTime(1.0, t, 0.1);
+                this.wetGain.gain.setTargetAtTime(this.mix, t, 0.1);
+            }
+
+            updateRoomSize() {
+                const t = this.ctx.currentTime;
+                const sizeMultiplier = 0.5 + (this.roomSize * 1.5); 
+                const feedback = 0.5 + (this.roomSize * 0.35); 
+                const cutoff = 5000 - (this.roomSize * 3000); 
+
+                const baseTimes = [41, 67, 97, 139, 173, 211, 251, 293].map(t => t / 1000);
+
+                for (let i = 0; i < this.delays.length; i++) {
+                    this.delays[i].delayTime.setTargetAtTime(baseTimes[i] * sizeMultiplier, t, 0.1);
+                    this.feedbacks[i].gain.setTargetAtTime(feedback, t, 0.1);
+                    this.lowpasses[i].frequency.setTargetAtTime(cutoff, t, 0.1);
+                }
+            }
+        }
+
+        class Resonator {
+            constructor(ctx) {
+                this.ctx = ctx;
+                this.input = ctx.createGain();
+                this.output = ctx.createGain();
+                this.filters = [];
+                this.filterGains = [];
+
+                this.baseFreq = 200;
+                this.damping = 0.5;
+                this.currentMode = 'membrane'; 
+
+                for (let i = 0; i < 16; i++) {
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    const gain = ctx.createGain();
+
+                    this.input.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.output);
+
+                    this.filters.push(filter);
+                    this.filterGains.push(gain);
+                }
+
+                this.setup('membrane'); 
+            }
+
+            setup(mode) {
+                this.currentMode = mode;
+                const model = PHYSICS_MODELS[mode];
+                if (!model) return;
+
+                this.baseFreq = model.baseFreq;
+
+                for (let i = 0; i < this.filters.length; i++) {
+                    if (i < model.ratios.length) {
+                        const ratio = model.ratios[i];
+                        const baseGain = model.gains[i];
+                        const baseQ = model.q[i];
+
+                        this.filters[i].frequency.value = this.baseFreq * ratio;
+                        this.filters[i].Q.value = baseQ * (1 + this.damping);
+                        this.filterGains[i].gain.value = baseGain;
+                    } else {
+                        this.filterGains[i].gain.value = 0;
+                    }
+                }
+            }
+
+            setDamping(val) {
+                this.damping = val; 
+                const model = PHYSICS_MODELS[this.currentMode];
+
+                for (let i = 0; i < this.filters.length; i++) {
+                    if (i < model.q.length) {
+                        const qMult = 2.0 - (val * 1.8);
+                        this.filters[i].Q.setTargetAtTime(model.q[i] * qMult, this.ctx.currentTime, 0.1);
+                    }
+                }
+            }
+
+            setFrequency(val) {
+                const targetFreq = 1000 - (val * 950);
+                const model = PHYSICS_MODELS[this.currentMode];
+
+                for (let i = 0; i < this.filters.length; i++) {
+                    if (i < model.ratios.length) {
+                        this.filters[i].frequency.setTargetAtTime(targetFreq * model.ratios[i], this.ctx.currentTime, 0.1);
+                    }
+                }
+            }
+        }
+
+        class Exciter {
+            constructor(ctx, destination) {
+                this.ctx = ctx;
+                this.destination = destination;
+
+                this.scrapeNode = null;
+                this.scrapeFilter = null;
+                this.scrapeGain = null;
+                this.isScraping = false;
+            }
+
+            trigger(velocity) {
+                const t = this.ctx.currentTime;
+
+                const bufferSize = this.ctx.sampleRate * 0.05; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const noiseFilter = this.ctx.createBiquadFilter();
+                noiseFilter.type = 'lowpass';
+                noiseFilter.frequency.value = 1000 + (velocity * 4000);
+
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.setValueAtTime(velocity * 1.5, t); 
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+
+                noise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(this.destination);
+
+                noise.start(t);
+                noise.stop(t + 0.05);
+
+                setTimeout(() => {
+                    noise.disconnect();
+                    noiseFilter.disconnect();
+                    noiseGain.disconnect();
+                }, 100);
+            }
+
+            startScrape() {
+                if (this.isScraping) return;
+                this.isScraping = true;
+
+                const bufferSize = this.ctx.sampleRate * 2; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1);
+                }
+
+                this.scrapeNode = this.ctx.createBufferSource();
+                this.scrapeNode.buffer = buffer;
+                this.scrapeNode.loop = true;
+
+                this.scrapeFilter = this.ctx.createBiquadFilter();
+                this.scrapeFilter.type = 'bandpass';
+                this.scrapeFilter.Q.value = 1;
+
+                this.scrapeGain = this.ctx.createGain();
+                this.scrapeGain.gain.value = 0;
+
+                this.scrapeNode.connect(this.scrapeFilter);
+                this.scrapeFilter.connect(this.scrapeGain);
+                this.scrapeGain.connect(this.destination);
+
+                this.scrapeNode.start();
+            }
+
+            updateScrape(velocity) {
+                if (!this.isScraping) return;
+
+                const t = this.ctx.currentTime;
+                this.scrapeGain.gain.setTargetAtTime(velocity * 0.8, t, 0.05); 
+
+                const freq = 200 + (velocity * 3000);
+                this.scrapeFilter.frequency.setTargetAtTime(freq, t, 0.1);
+            }
+
+            stopScrape() {
+                if (!this.isScraping) return;
+                this.isScraping = false;
+
+                const t = this.ctx.currentTime;
+                this.scrapeGain.gain.setTargetAtTime(0, t, 0.1);
+
+                setTimeout(() => {
+                    if (this.scrapeNode) this.scrapeNode.stop();
+                    this.scrapeNode = null;
+                    this.scrapeFilter = null;
+                    this.scrapeGain = null;
+                }, 200);
+            }
+        }
+
+        class App {
+            constructor() {
+                this.ctx = null;
+                this.resonator = null;
+                this.exciter = null;
+                this.reverb = null;
+                this.masterGain = null;
+                this.canvas = document.getElementById('canvas');
+                this.visualCtx = this.canvas.getContext('2d');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+
+                this.isRunning = false;
+
+                this.init();
+            }
+
+            init() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                document.getElementById('start-overlay').addEventListener('click', () => this.start());
+
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+
+                        const mode = e.target.dataset.mode;
+                        if (this.resonator) {
+                            this.resonator.setup(mode);
+                        }
+                    });
+                });
+            }
+
+            start() {
+                if (this.isRunning) return;
+
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+
+                this.resonator = new Resonator(this.ctx);
+                this.exciter = new Exciter(this.ctx, this.resonator.input);
+                this.reverb = new DenseReverb(this.ctx);
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 3.0; 
+
+                this.resonator.output.connect(this.reverb.input);
+                this.reverb.output.connect(this.masterGain);
+
+                const compressor = this.ctx.createDynamicsCompressor();
+                compressor.threshold.value = -15; 
+                compressor.ratio.value = 4;
+                compressor.attack.value = 0.003;
+                compressor.release.value = 0.1;
+
+                this.analyser = this.ctx.createAnalyser();
+                this.analyser.fftSize = 2048;
+
+                this.masterGain.connect(compressor);
+                compressor.connect(this.analyser);
+                this.analyser.connect(this.ctx.destination);
+
+                this.isRunning = true;
+                document.getElementById('start-overlay').style.opacity = 0;
+                setTimeout(() => document.getElementById('start-overlay').remove(), 500);
+
+                this.setupInteractions();
+                this.loop();
+            }
+
+            setupInteractions() {
+                let lastX = 0;
+                let lastY = 0;
+                let lastTime = 0;
+
+                const handleStart = (e) => {
+                    e.preventDefault();
+                    const t = e.touches ? e.touches[0] : e;
+                    lastX = t.clientX;
+                    lastY = t.clientY;
+                    lastTime = Date.now();
+
+                    this.exciter.trigger(0.8);
+                    this.exciter.startScrape();
+
+                    this.updateParams(t.clientX, t.clientY);
+                };
+
+                const handleMove = (e) => {
+                    e.preventDefault();
+                    const t = e.touches ? e.touches[0] : e;
+                    const now = Date.now();
+                    const dt = now - lastTime;
+
+                    if (dt > 0) {
+                        const dx = t.clientX - lastX;
+                        const dy = t.clientY - lastY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const velocity = Math.min(1.0, dist / (dt * 2)); 
+
+                        this.exciter.updateScrape(velocity);
+
+                        lastX = t.clientX;
+                        lastY = t.clientY;
+                        lastTime = now;
+                    }
+
+                    this.updateParams(t.clientX, t.clientY);
+                };
+
+                const handleEnd = (e) => {
+                    e.preventDefault();
+                    this.exciter.stopScrape();
+                };
+
+                this.canvas.addEventListener('mousedown', handleStart);
+                this.canvas.addEventListener('mousemove', handleMove);
+                this.canvas.addEventListener('mouseup', handleEnd);
+                this.canvas.addEventListener('touchstart', handleStart, { passive: false });
+                this.canvas.addEventListener('touchmove', handleMove, { passive: false });
+                this.canvas.addEventListener('touchend', handleEnd);
+
+                window.addEventListener('devicemotion', (e) => {
+                    const acc = e.acceleration;
+                    if (acc) {
+                        const force = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+                        if (force > 15) { 
+                            this.exciter.trigger(Math.min(1.0, (force - 15) / 20));
+                        }
+                    }
+                });
+            }
+
+            updateParams(x, y) {
+                const damping = x / this.width;
+                this.resonator.setDamping(damping);
+
+                const reverbMix = x / this.width;
+                this.reverb.setMix(reverbMix);
+
+                const size = y / this.height;
+                this.resonator.setFrequency(size);
+
+                const roomSize = y / this.height;
+                this.reverb.setRoomSize(roomSize);
+
+                const display = document.getElementById('param-display');
+
+                let roomDesc = "Tiny";
+                if (roomSize > 0.25) roomDesc = "Small";
+                if (roomSize > 0.4) roomDesc = "Medium";
+                if (roomSize > 0.6) roomDesc = "Large";
+                if (roomSize > 0.8) roomDesc = "Vast";
+
+                const displayReverbMix = Math.floor(reverbMix * 100);
+
+                display.textContent = `DAMP: ${Math.floor(damping * 100)}% | SIZE: ${Math.floor((1 - size) * 100)}% | REV: ${displayReverbMix}% | ROOM: ${roomDesc}`;
+                display.classList.add('visible');
+
+                if (this.paramTimeout) clearTimeout(this.paramTimeout);
+                this.paramTimeout = setTimeout(() => {
+                    display.classList.remove('visible');
+                }, 1000);
+            }
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+            }
+
+            loop() {
+                if (!this.isRunning) return;
+                requestAnimationFrame(() => this.loop());
+                this.draw();
+            }
+
+            draw() {
+                this.visualCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                this.visualCtx.fillRect(0, 0, this.width, this.height);
+
+                if (!this.analyser) return;
+
+                const bufferLength = this.analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                this.analyser.getByteTimeDomainData(dataArray);
+
+                this.visualCtx.lineWidth = 2;
+                this.visualCtx.strokeStyle = '#fff';
+                this.visualCtx.beginPath();
+
+                const sliceWidth = this.width * 1.0 / bufferLength;
+
+                const cx = this.width / 2;
+                const cy = this.height / 2;
+                const minDim = Math.min(this.width, this.height);
+                const radius = minDim * 0.3;
+
+                for (let j = 0; j < 2; j++) {
+                    const dir = j === 0 ? 1 : -1;
+
+                    for (let i = 0; i < bufferLength; i += 2) { 
+                        const v = dataArray[i] / 128.0;
+                        const angle = (i / bufferLength) * Math.PI * 2 * dir + (Date.now() * 0.0005 * dir);
+
+                        const r = radius + (v - 1) * (minDim * 0.4);
+
+                        const px = cx + Math.cos(angle) * r;
+                        const py = cy + Math.sin(angle) * r;
+
+                        if (i === 0) {
+                            this.visualCtx.moveTo(px, py);
+                        } else {
+                            this.visualCtx.lineTo(px, py);
+                        }
+                    }
+                }
+
+                this.visualCtx.closePath();
+                this.visualCtx.stroke();
+
+                if (this.exciter && this.exciter.isScraping) {
+                    let sum = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        sum += Math.abs(dataArray[i] - 128);
+                    }
+                    const avg = sum / bufferLength;
+
+                    if (avg > 2) {
+                        this.visualCtx.beginPath();
+                        this.visualCtx.arc(cx, cy, radius * 0.5, 0, Math.PI * 2);
+                        this.visualCtx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.5, avg * 0.02)})`;
+                        this.visualCtx.fill();
+                    }
+                }
+            }
+        }
+
+        window.onload = () => new App();
+    </script>
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
+        <button onclick="window.location.href='../index.html'"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
+        <button onclick="randomApp()"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
+    </div>
+    <script>
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                 random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+    </script>
+</body>
+
+</html>

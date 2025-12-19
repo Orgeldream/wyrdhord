@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HRINAN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --accent-color: #a0a0a0;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Josefin Sans', sans-serif;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+        }
+
+        .title-block {
+            text-align: left;
+            opacity: 0.8;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+        }
+
+        .load-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            padding: 10px 18px;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            text-transform: uppercase;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        .load-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff;
+        }
+
+        .load-btn:active {
+            transform: scale(0.96);
+        }
+
+        #pad-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .zone {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .zone.active {
+            opacity: 1;
+        }
+
+        #zone1 {
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 70%);
+        }
+
+        #zone2 {
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 70%);
+        }
+
+        #zone3 {
+            top: 50%;
+            left: 0;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.08), transparent 70%);
+        }
+
+        #zone4 {
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.08), transparent 70%);
+        }
+
+        .zone-label {
+            position: absolute;
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.2);
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+
+        #label1 {
+            top: 20%;
+            left: 15%;
+        }
+
+        #label2 {
+            top: 20%;
+            right: 15%;
+        }
+
+        #label3 {
+            bottom: 25%;
+            left: 15%;
+        }
+
+        #label4 {
+            bottom: 25%;
+            right: 15%;
+        }
+
+        .crosshair {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.1;
+        }
+
+        .crosshair-h {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3) 50%, transparent);
+        }
+
+        .crosshair-v {
+            top: 0;
+            left: 50%;
+            width: 1px;
+            height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.3) 50%, transparent);
+        }
+
+        #touch-indicator {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2), inset 0 0 30px rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+        }
+
+        #touch-indicator::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #center-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: all 0.2s ease;
+        }
+
+        #center-indicator.active {
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .info-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px;
+            pointer-events: auto;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .info-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 8px;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .sample-name {
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--glass-border);
+            font-size: 9px;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+        }
+
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 5, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+
+        .start-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 16px 32px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .start-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff;
+        }
+
+        .hint {
+            margin-top: 24px;
+            font-size: 10px;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        #file-input {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="pad-container">
+        <div id="zone1" class="zone"></div>
+        <div id="zone2" class="zone"></div>
+        <div id="zone3" class="zone"></div>
+        <div id="zone4" class="zone"></div>
+
+        <div class="crosshair crosshair-h"></div>
+        <div class="crosshair crosshair-v"></div>
+
+        <div id="label1" class="zone-label">Reverb</div>
+        <div id="label2" class="zone-label">Delay</div>
+        <div id="label3" class="zone-label">Distort</div>
+        <div id="label4" class="zone-label">Filter</div>
+
+        <div id="touch-indicator"></div>
+        <div id="center-indicator"></div>
+    </div>
+
+    <div class="ui-layer">
+        <div class="header">
+            <div class="title-block">
+                <div class="title">HRINAN</div>
+                <div class="subtitle">LOFI LOOPING MULTIFX</div>
+            </div>
+            <button class="load-btn" id="load-button">Load</button>
+            <input type="file" id="file-input" accept="audio/*">
+        </div>
+
+        <div class="info-panel">
+            <div class="info-row">
+                <div class="info-item">
+                    <div class="info-label">Reverb</div>
+                    <div class="info-value" id="val-reverb">--</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Delay</div>
+                    <div class="info-value" id="val-delay">--</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Distort</div>
+                    <div class="info-value" id="val-distort">--</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Filter</div>
+                    <div class="info-value" id="val-filter">--</div>
+                </div>
+            </div>
+            <div class="sample-name" id="sample-info">NO SAMPLE LOADED</div>
+        </div>
+    </div>
+
+    <div id="start-overlay">
+        <button class="start-btn" id="start-btn">INITIALISE</button>
+        <div class="hint">
+            LOAD AUDIO SAMPLE<br>
+            TOUCH TO LOOP<br>
+            CORNERS = EFFECTS
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script>
+        let isStarted = false;
+        const pad = document.getElementById('pad-container');
+        const indicator = document.getElementById('touch-indicator');
+        const centerIndicator = document.getElementById('center-indicator');
+        const zones = document.querySelectorAll('.zone');
+        const loadButton = document.getElementById('load-button');
+        const fileInput = document.getElementById('file-input');
+        const sampleInfo = document.getElementById('sample-info');
+
+        let grainPlayer = null;
+        let reverb, delay, distortion, filter, masterGain, dryGain;
+        let reverbGain, delayGain, distortGain, bitcrusher, waveShaper;
+        let audioInitialized = false;
+        let shouldRestartFromBeginning = false;
+
+        async function initAudio() {
+            if (!audioInitialized) {
+                await Tone.start();
+                initAudioEffects();
+                audioInitialized = true;
+            }
+        }
+
+        fileInput.addEventListener('change', handleFileSelect);
+        loadButton.addEventListener('click', () => fileInput.click());
+
+        async function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.size === 0) {
+                    sampleInfo.textContent = 'ERROR: INVALID FILE';
+                    return;
+                }
+                await loadSample(file);
+            }
+        }
+
+        function initAudioEffects() {
+            masterGain = new Tone.Gain(0.7);
+
+            const compressor = new Tone.Compressor({ threshold: -30, ratio: 20, attack: 0.001, release: 0.2 });
+            const gainBoost = new Tone.Gain(3.0);
+            const limiter = new Tone.Limiter(-3);
+
+            masterGain.chain(compressor, gainBoost, limiter, Tone.Destination);
+            dryGain = new Tone.Gain(1.0).connect(masterGain);
+
+            reverb = new Tone.Reverb({
+                decay: 15,  
+                preDelay: 0.2,
+                wet: 1
+            });
+
+            reverbGain = new Tone.Gain(0).connect(masterGain);
+            const reverbSend = new Tone.Gain(1);
+            reverbSend.connect(reverb);
+            reverb.connect(reverbGain);
+
+            waveShaper = new Tone.WaveShaper((x) => {
+                if (x > 0) return Math.tanh(x * 10) * 1.5;
+                return Math.tanh(x * 15) * 2;
+            });
+
+            distortion = new Tone.Distortion({
+                distortion: 1.0,  
+                oversample: '4x',
+                wet: 0.7
+            });
+
+            bitcrusher = new Tone.BitCrusher({
+                bits: 2,  
+                wet: 0.8
+            });
+
+            const fuzz = new Tone.Distortion({
+                distortion: 0.9,
+                oversample: '4x',
+                wet: 0.6
+            });
+
+            distortGain = new Tone.Gain(0).connect(masterGain);
+
+            distortion.connect(waveShaper);
+            waveShaper.connect(bitcrusher);
+            bitcrusher.connect(fuzz);
+            fuzz.connect(distortGain);
+
+            delay = new Tone.FeedbackDelay({
+                delayTime: 0.5,
+                feedback: 0.8,  
+                wet: 1
+            });
+            delayGain = new Tone.Gain(0).connect(masterGain);
+            delay.connect(delayGain);
+
+            filter = new Tone.Filter({
+                frequency: 20000,
+                type: "lowpass",
+                rolloff: -48,  
+                Q: 5
+            });
+            filter.connect(dryGain);
+        }
+
+        function getZoneWeights(x, y) {
+            const w = pad.offsetWidth, h = pad.offsetHeight;
+            const xN = x / w, yN = y / h;
+            return {
+                reverb: (1 - xN) * (1 - yN),
+                delay: xN * (1 - yN),
+                distortion: Math.pow((1 - xN) * yN, 3),
+                filter: xN * yN
+            };
+        }
+
+        function isNearCenter(x, y) {
+            const w = pad.offsetWidth, h = pad.offsetHeight;
+            const dist = Math.sqrt(Math.pow(x - w / 2, 2) + Math.pow(y - h / 2, 2));
+            return dist <= Math.min(w, h) * 0.1;
+        }
+
+        function updateAudio(x, y) {
+            if (!isStarted || !grainPlayer || !grainPlayer.loaded) return;
+
+            const w = pad.offsetWidth, h = pad.offsetHeight;
+            const xN = x / w, yN = y / h;
+            const nearCenter = isNearCenter(x, y);
+
+            centerIndicator.classList.toggle('active', nearCenter);
+
+            const weights = getZoneWeights(x, y);
+
+            zones[0].classList.toggle('active', weights.reverb > 0.3);
+            zones[1].classList.toggle('active', weights.delay > 0.3);
+            zones[2].classList.toggle('active', weights.distortion > 0.3);
+            zones[3].classList.toggle('active', weights.filter > 0.3);
+
+            document.getElementById('val-reverb').textContent = Math.round(weights.reverb * 100) + '%';
+            document.getElementById('val-delay').textContent = Math.round(weights.delay * 100) + '%';
+            document.getElementById('val-distort').textContent = Math.round(weights.distortion * 100) + '%';
+            document.getElementById('val-filter').textContent = Math.round(200 + (1 - weights.filter) * 8000) + 'Hz';
+
+            reverbGain.gain.rampTo(weights.reverb * 1.5, 0.1);
+
+            delayGain.gain.rampTo(weights.delay * 0.8, 0.05);
+            delay.feedback.rampTo(0.3 + weights.delay * 0.6, 0.05);
+            delay.delayTime.rampTo(0.2 + weights.delay * 0.6, 0.05);
+
+            const distortAmount = weights.distortion;
+
+            distortGain.gain.rampTo(distortAmount * 6.0, 0.05);
+
+            distortion.distortion = 0.8 + (distortAmount * 1.2); 
+            distortion.wet = 0.5 + distortAmount * 0.5;
+
+            bitcrusher.bits = Math.max(1, Math.floor(8 - distortAmount * 7));
+            bitcrusher.wet = 0.5 + distortAmount * 0.5;
+
+            const filterFreq = 80 + (1 - weights.filter) * 10000;
+            filter.frequency.rampTo(filterFreq, 0.05);
+            filter.Q.rampTo(2 + weights.filter * 20, 0.05); 
+
+            grainPlayer.playbackRate = Math.pow(2, (yN - 0.5) * 3);
+            grainPlayer.detune = (xN - 0.5) * 2400;
+
+            const totalEffect = weights.reverb + weights.delay + weights.distortion;
+            dryGain.gain.rampTo(Math.max(0.2, 1.0 - totalEffect * 0.7), 0.05);
+
+            masterGain.gain.rampTo(0.7 + (weights.distortion * 0.4), 0.05);
+
+            if (grainPlayer.state !== 'started') {
+                const t = Tone.now();
+                grainPlayer.volume.value = -60;
+                if (nearCenter || shouldRestartFromBeginning) {
+                    grainPlayer.start(t, 0);
+                    shouldRestartFromBeginning = false;
+                } else {
+                    grainPlayer.start(t);
+                }
+                grainPlayer.volume.rampTo(0, 0.1);
+            }
+        }
+
+        function stopAudio() {
+            if (grainPlayer && grainPlayer.state === 'started') {
+                grainPlayer.volume.rampTo(-60, 0.1);
+                setTimeout(() => { if (grainPlayer?.state === 'started') grainPlayer.stop(); }, 110);
+            }
+            zones.forEach(z => z.classList.remove('active'));
+            centerIndicator.classList.remove('active');
+
+            document.getElementById('val-reverb').textContent = '--';
+            document.getElementById('val-delay').textContent = '--';
+            document.getElementById('val-distort').textContent = '--';
+            document.getElementById('val-filter').textContent = '--';
+
+            if (dryGain) dryGain.gain.rampTo(1.0, 0.2);
+            if (masterGain) masterGain.gain.rampTo(0.7, 0.2);
+        }
+
+        async function loadSample(file) {
+            sampleInfo.textContent = 'LOADING...';
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
+
+                if (grainPlayer) {
+                    if (grainPlayer.state === 'started') {
+                        grainPlayer.volume.rampTo(-60, 0.005);
+                        setTimeout(() => grainPlayer.stop(), 10);
+                    }
+                    grainPlayer.disconnect();
+                    grainPlayer.dispose();
+                }
+
+                grainPlayer = new Tone.Player({
+                    url: audioBuffer,
+                    loop: true,
+                    playbackRate: 1,
+                    volume: -60,
+                    fadeIn: 0.05,
+                    fadeOut: 0.05
+                });
+
+                await Tone.loaded();
+
+                const distortionInput = distortion;
+                grainPlayer.connect(filter);
+                grainPlayer.connect(reverb);
+                grainPlayer.connect(delay);
+                grainPlayer.connect(distortionInput);
+
+                shouldRestartFromBeginning = true;
+                isStarted = true;
+
+                const name = file.name.length > 24 ? file.name.substring(0, 21) + '...' : file.name;
+                sampleInfo.textContent = name.toUpperCase();
+
+            } catch (error) {
+                console.error(error);
+                sampleInfo.textContent = 'ERROR: COULD NOT LOAD';
+            }
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            if (!isStarted) return;
+            const touch = e.touches[0] || e.changedTouches[0];
+            const rect = pad.getBoundingClientRect();
+            const x = touch.clientX - rect.left, y = touch.clientY - rect.top;
+            indicator.style.display = 'block';
+            indicator.style.left = x + 'px';
+            indicator.style.top = y + 'px';
+            updateAudio(x, y);
+        }
+
+        function handleMouse(e) {
+            if (!isStarted) return;
+            const rect = pad.getBoundingClientRect();
+            const x = e.clientX - rect.left, y = e.clientY - rect.top;
+            indicator.style.display = 'block';
+            indicator.style.left = x + 'px';
+            indicator.style.top = y + 'px';
+            updateAudio(x, y);
+        }
+
+        pad.addEventListener('touchstart', handleTouch);
+        pad.addEventListener('touchmove', handleTouch);
+        pad.addEventListener('touchend', (e) => { e.preventDefault(); indicator.style.display = 'none'; stopAudio(); });
+
+        pad.addEventListener('mousedown', (e) => { e.preventDefault(); pad.dataset.mouseDown = 'true'; handleMouse(e); });
+        pad.addEventListener('mousemove', (e) => { if (pad.dataset.mouseDown === 'true') handleMouse(e); });
+        pad.addEventListener('mouseup', () => { pad.dataset.mouseDown = 'false'; indicator.style.display = 'none'; stopAudio(); });
+        pad.addEventListener('mouseleave', () => { pad.dataset.mouseDown = 'false'; indicator.style.display = 'none'; stopAudio(); });
+
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            await initAudio();
+            const overlay = document.getElementById('start-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.remove(), 800);
+        });
+    </script>
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
+        <button onclick="window.location.href='../index.html'"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
+        <button onclick="randomApp()"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
+    </div>
+    <script>
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                 random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+    </script>
+</body>
+
+</html>

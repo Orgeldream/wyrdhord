@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BLOMA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #888888;
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .scale-btn-container {
+            pointer-events: auto;
+            z-index: 20;
+            position: relative;
+        }
+
+        .scale-btn {
+            font-size: 12px;
+            letter-spacing: 2px;
+            border: 1px solid #444;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .scale-btn:hover {
+            background: #222;
+            border-color: #888;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 20px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            mix-blend-mode: difference;
+        }
+
+        .subtitle {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            margin-top: 2px;
+        }
+
+        .params {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 300px;
+            backdrop-filter: blur(5px);
+        }
+
+        .params.active {
+            opacity: 1;
+        }
+
+        .param-row {
+            font-size: 12px;
+            letter-spacing: 2px;
+            margin: 4px 0;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px #000;
+        }
+
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .start-msg {
+            font-size: 14px;
+            letter-spacing: 4px;
+            animation: pulse 2s infinite;
+            cursor: pointer;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .mobile-hint {
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            margin-top: 20px;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .delay-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            pointer-events: auto;
+            z-index: 30;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .slider-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .slider-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #444;
+            border-radius: 1px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -7px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        input[type=range]:focus::-webkit-slider-runnable-track {
+            background: #555;
+        }
+
+        
+        @media (max-width: 768px) {
+            .ui-layer {
+                padding: 12px;
+            }
+
+            .title {
+                font-size: 18px;
+            }
+
+            .scale-btn {
+                font-size: 11px;
+                padding: 8px 12px;
+                min-width: 120px;
+            }
+
+            .delay-controls {
+                bottom: 40px;
+                width: 95%;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-layer">
+        <div class="header">
+            <div>
+                <div class="title">BLOMA</div>
+                <div class="subtitle">FEEDBACK FREQUENCY MODULATION</div>
+            </div>
+            <div class="scale-btn-container">
+                <div id="scale-btn" class="scale-btn">SCALE: OFF</div>
+            </div>
+        </div>
+
+        <div class="params" id="params-display">
+            <div class="param-row">FREQ: <span id="val-freq">110 Hz</span></div>
+            <div class="param-row">MIX: <span id="val-mix">FM 100%</span></div>
+            <div class="param-row">ACTIVITY: <span id="val-activity">0%</span></div>
+        </div>
+
+        <div class="delay-controls" id="delay-controls">
+            <div class="slider-group">
+                <div class="slider-label">Delay BPM: <span id="bpm-val">120</span></div>
+                <input type="range" id="bpm-slider" min="30" max="300" value="120">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">Delay Mix: <span id="mix-val">0%</span></div>
+                <input type="range" id="mix-slider" min="0" max="100" value="0">
+            </div>
+        </div>
+    </div>
+
+    <div id="start-overlay">
+        <div class="start-msg">TAP TO INITIALISE</div>
+        <div class="mobile-hint">Move finger across screen to control sound</div>
+    </div>
+
+    <script>
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.compressor = null;
+                this.analyser = null;
+                this.lowpassFilter = null;
+
+                this.carrier = null;
+                this.modulator = null;
+                this.modGain = null;
+                this.fmFeedbackGain = null;
+                this.fmGain = null;
+
+                this.noiseNode = null;
+                this.ksLowpass = null;
+                this.ksDelay = null;
+                this.ksFeedbackGain = null;
+                this.ksOutputGain = null;
+                this.ksExciterGain = null;
+
+                this.chopperGain = null;
+
+                this.masterDelay = null;
+                this.delayFeedback = null;
+                this.delayDry = null;
+                this.delayWet = null;
+                this.delayBpm = 120;
+                this.delayMixAmount = 0;
+
+                this.baseFreq = 110;
+                this.ratio = 1.0;
+                this.index = 0;
+                this.activity = 0;
+                this.mix = 0;
+                this.isPlaying = false;
+
+                this.unlocked = false;
+                this._unlockHandler = this._unlockHandler.bind(this);
+
+                this.currentScale = 'OFF';
+                this.scales = {
+                    'OFF': null,
+                    'MINOR PENT': [0, 3, 5, 7, 10],
+                    'MAJOR PENT': [0, 2, 4, 7, 9],
+                    'DORIAN': [0, 2, 3, 5, 7, 9, 10]
+                };
+
+                this.rhythmTimer = null;
+                this.nextRhythmTime = 0;
+            }
+
+            init() {
+                if (this.ctx) return;
+
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        if (this.ctx.state === 'running') this.ctx.suspend();
+                    } else {
+                        if (this.ctx.state === 'suspended') this.ctx.resume();
+                    }
+                });
+
+                ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(evt => {
+                    document.body.addEventListener(evt, this._unlockHandler, { passive: false, capture: true });
+                });
+
+                this.setupGraph();
+            }
+
+            _unlockHandler(e) {
+                if (this.unlocked || !this.ctx) return;
+
+                this.ctx.resume().then(() => {
+                    if (this.ctx.state === 'running') {
+                        this.unlocked = true;
+                        this._removeUnlockListeners();
+                    }
+                });
+
+                const buffer = this.ctx.createBuffer(1, 1, 22050);
+                const source = this.ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.ctx.destination);
+                source.start(0);
+            }
+
+            _removeUnlockListeners() {
+                ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(evt => {
+                    document.body.removeEventListener(evt, this._unlockHandler, { capture: true });
+                });
+            }
+
+            setupGraph() {
+                this.compressor = this.ctx.createDynamicsCompressor();
+                this.compressor.threshold.value = -20;
+                this.compressor.knee.value = 40;
+                this.compressor.ratio.value = 12;
+                this.compressor.attack.value = 0;
+                this.compressor.release.value = 0.1;
+
+
+                this.lowpassFilter = this.ctx.createBiquadFilter();
+                this.lowpassFilter.type = 'lowpass';
+                this.lowpassFilter.frequency.value = 5000;
+                this.lowpassFilter.Q.value = 0.7;
+
+                this.masterDelay = this.ctx.createDelay(4.0);
+                this.delayFeedback = this.ctx.createGain();
+                this.delayFeedback.gain.value = 0.4;
+                this.delayDry = this.ctx.createGain();
+                this.delayDry.gain.value = 1;
+                this.delayWet = this.ctx.createGain();
+                this.delayWet.gain.value = 0;
+
+                this.masterDelay.connect(this.delayFeedback);
+                this.delayFeedback.connect(this.masterDelay);
+
+                this.lowpassFilter.connect(this.delayDry);
+                this.lowpassFilter.connect(this.masterDelay);
+                this.masterDelay.connect(this.delayWet);
+
+                this.delayDry.connect(this.compressor);
+                this.delayWet.connect(this.compressor);
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0;
+                this.masterGain.connect(this.lowpassFilter);
+
+                this.chopperGain = this.ctx.createGain();
+                this.chopperGain.gain.value = 1;
+                this.chopperGain.connect(this.masterGain);
+
+                this.analyser = this.ctx.createAnalyser();
+                this.analyser.fftSize = 2048;
+                this.compressor.connect(this.analyser);
+                this.analyser.connect(this.ctx.destination); 
+
+                this.updateDelaySettings();
+
+                this.createSynthNodes();
+            }
+
+            updateDelaySettings() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                const delayTime = 60 / this.delayBpm;
+                this.masterDelay.delayTime.setTargetAtTime(delayTime, now, 0.1);
+
+                const wet = this.delayMixAmount / 100;
+                const dry = 1 - (wet * 0.5); 
+
+                this.delayDry.gain.setTargetAtTime(dry, now, 0.1);
+                this.delayWet.gain.setTargetAtTime(wet, now, 0.1);
+
+                const feedbackAmt = wet * 0.6;
+                this.delayFeedback.gain.setTargetAtTime(feedbackAmt, now, 0.1);
+            }
+
+            createSynthNodes() {
+                try {
+                    this.carrier = this.ctx.createOscillator();
+                    this.carrier.type = 'sine';
+                    this.carrier.frequency.value = this.baseFreq;
+
+                    this.modulator = this.ctx.createOscillator();
+                    this.modulator.type = 'sine';
+                    this.modulator.frequency.value = this.baseFreq * this.ratio;
+
+                    this.modGain = this.ctx.createGain();
+                    this.modGain.gain.value = 0;
+
+                    this.fmFeedbackGain = this.ctx.createGain();
+                    this.fmFeedbackGain.gain.value = 0;
+
+                    this.fmGain = this.ctx.createGain();
+                    this.fmGain.gain.value = 1;
+
+                    this.modulator.connect(this.modGain);
+                    this.modGain.connect(this.carrier.frequency);
+                    this.modulator.connect(this.fmFeedbackGain);
+                    this.fmFeedbackGain.connect(this.modulator.frequency);
+                    this.carrier.connect(this.fmGain);
+                    this.fmGain.connect(this.chopperGain); 
+
+                    this.carrier.start();
+                    this.modulator.start();
+
+                    const bufferSize = 2 * this.ctx.sampleRate;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    let last = 0;
+                    for (let i = 0; i < bufferSize; i++) {
+                        last = 0.98 * last + 0.02 * (Math.random() * 2 - 1);
+                        data[i] = last * 0.2;
+                    }
+                    this.noiseNode = this.ctx.createBufferSource();
+                    this.noiseNode.buffer = buffer;
+                    this.noiseNode.loop = true;
+                    this.noiseNode.start();
+
+                    this.ksExciterGain = this.ctx.createGain();
+                    this.ksExciterGain.gain.value = 0;
+
+                    this.ksDelay = this.ctx.createDelay(1.0);
+                    this.ksFeedbackGain = this.ctx.createGain();
+                    this.ksFeedbackGain.gain.value = 0.8;
+
+                    this.ksLowpass = this.ctx.createBiquadFilter();
+                    this.ksLowpass.type = 'lowpass';
+                    this.ksLowpass.frequency.value = 1500;
+
+                    this.ksOutputGain = this.ctx.createGain();
+                    this.ksOutputGain.gain.value = 0;
+
+                    this.noiseNode.connect(this.ksExciterGain);
+                    this.ksExciterGain.connect(this.ksLowpass);
+                    this.ksLowpass.connect(this.ksDelay);
+                    this.ksDelay.connect(this.ksFeedbackGain);
+                    this.ksFeedbackGain.connect(this.ksLowpass);
+                    this.ksDelay.connect(this.ksOutputGain);
+                    this.ksOutputGain.connect(this.chopperGain); 
+                } catch (e) {
+                    console.error("Audio Graph Setup Failed:", e);
+                }
+            }
+
+            start() {
+                if (!this.ctx) return;
+
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const now = this.ctx.currentTime;
+
+                if (this.fmFeedbackGain) this.fmFeedbackGain.gain.setTargetAtTime(0, now, 0.1);
+                if (this.ksFeedbackGain) this.ksFeedbackGain.gain.setTargetAtTime(0.8, now, 0.1);
+                if (this.ksLowpass) this.ksLowpass.frequency.setTargetAtTime(1500, now, 0.1);
+
+                if (this.masterGain) {
+                    this.masterGain.gain.cancelScheduledValues(now);
+                    this.masterGain.gain.setTargetAtTime(0.5, now, 0.01);
+                }
+
+                if (this.chopperGain) {
+                    this.chopperGain.gain.cancelScheduledValues(now);
+                    this.chopperGain.gain.setValueAtTime(1, now);
+                }
+
+                if (this.ksExciterGain) {
+                    this.ksExciterGain.gain.cancelScheduledValues(now);
+                    this.ksExciterGain.gain.setValueAtTime(0.5, now);
+                    this.ksExciterGain.gain.linearRampToValueAtTime(0, now + 0.1);
+                }
+
+                this.isPlaying = true;
+                this.activity = 0;
+            }
+
+            stop() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                if (this.fmFeedbackGain) {
+                    this.fmFeedbackGain.gain.cancelScheduledValues(now);
+                    this.fmFeedbackGain.gain.setValueAtTime(0, now);
+                }
+
+                if (this.ksFeedbackGain) {
+                    this.ksFeedbackGain.gain.cancelScheduledValues(now);
+                    this.ksFeedbackGain.gain.setValueAtTime(0.8, now);
+                }
+
+                if (this.ksLowpass) {
+                    this.ksLowpass.frequency.cancelScheduledValues(now);
+                    this.ksLowpass.frequency.setValueAtTime(1500, now);
+                }
+
+                if (this.masterGain) {
+                    this.masterGain.gain.cancelScheduledValues(now);
+                    this.masterGain.gain.setTargetAtTime(0, now, 0.1);
+                }
+
+                if (this.ksExciterGain) {
+                    this.ksExciterGain.gain.cancelScheduledValues(now);
+                    this.ksExciterGain.gain.setValueAtTime(0, now);
+                }
+
+                this.isPlaying = false;
+                this.activity = 0;
+
+                if (this.rhythmTimer) {
+                    clearTimeout(this.rhythmTimer);
+                    this.rhythmTimer = null;
+                }
+            }
+
+            quantizeFreq(freq) {
+                if (this.currentScale === 'OFF' || !this.scales[this.currentScale]) return freq;
+
+                const midi = 69 + 12 * Math.log2(freq / 440);
+                const octave = Math.floor(midi / 12);
+                const note = Math.round(midi % 12);
+
+                const scale = this.scales[this.currentScale];
+                let nearest = scale[0];
+                let minDiff = 100;
+
+                for (let n of scale) {
+                    const diff = Math.abs(note - n);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        nearest = n;
+                    }
+                }
+
+                const newMidi = octave * 12 + nearest;
+                return 440 * Math.pow(2, (newMidi - 69) / 12);
+            }
+
+            triggerRhythm() {
+                if (!this.ctx || !this.isPlaying) return;
+                const now = this.ctx.currentTime;
+
+                const delay = this.currentRhythmDelay || 0.1;
+
+                if (now >= this.nextRhythmTime) {
+                    if (this.chopperGain) {
+                        const gateLen = delay * 0.5; 
+                        this.chopperGain.gain.cancelScheduledValues(now);
+                        this.chopperGain.gain.setValueAtTime(0, now);
+                        this.chopperGain.gain.linearRampToValueAtTime(1, now + 0.005);
+                        this.chopperGain.gain.setValueAtTime(1, now + gateLen - 0.005);
+                        this.chopperGain.gain.linearRampToValueAtTime(0, now + gateLen);
+                    }
+
+                    if (this.ksExciterGain) {
+                        this.ksExciterGain.gain.cancelScheduledValues(now);
+                        this.ksExciterGain.gain.setValueAtTime(0.8, now); 
+                        this.ksExciterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    }
+
+                    if (this.modGain) {
+                        this.modGain.gain.cancelScheduledValues(now);
+                        this.modGain.gain.setValueAtTime(this.index * 2, now);
+                        this.modGain.gain.setTargetAtTime(this.index, now + 0.05, 0.05);
+                    }
+
+                    this.nextRhythmTime = now + delay;
+                }
+
+                this.rhythmTimer = setTimeout(() => this.triggerRhythm(), delay * 1000);
+            }
+
+            update(x, y, movementSpeed = 0) {
+                if (!this.ctx || !this.carrier) return;
+                const now = this.ctx.currentTime;
+
+                if (!this.isPlaying) {
+                    this.activity = 0;
+                } else {
+                    const newActivity = Math.min(1, movementSpeed * 2);
+                    const smoothing = newActivity > this.activity ? 0.3 : 0.6;
+                    this.activity = this.activity * smoothing + newActivity * (1 - smoothing);
+                }
+
+                this.mix = x;
+
+                const minFreq = 30;
+                const maxFreq = 1500;
+                const pitchNorm = 1 - y;
+                let targetFreq = minFreq * Math.pow(maxFreq / minFreq, pitchNorm);
+
+                this.baseFreq = this.quantizeFreq(targetFreq);
+
+                this.index = x * 1000 * (1 - this.mix);
+
+                const delayTime = 1 / Math.max(30, this.baseFreq);
+
+                this.carrier.frequency.setTargetAtTime(this.baseFreq, now, 0.05);
+                this.modulator.frequency.setTargetAtTime(this.baseFreq * this.ratio, now, 0.05);
+                this.modGain.gain.setTargetAtTime(this.index, now, 0.05);
+                this.ksDelay.delayTime.setTargetAtTime(delayTime, now, 0.05);
+
+                this.fmGain.gain.setTargetAtTime(1 - Math.pow(this.mix, 2), now, 0.05);
+                this.ksOutputGain.gain.setTargetAtTime(Math.pow(this.mix, 2), now, 0.05);
+
+                const cutoffFreq = 500 + (1 - y) * 8000;
+                this.lowpassFilter.frequency.setTargetAtTime(cutoffFreq, now, 0.05);
+
+                if (this.isPlaying) {
+                    const targetFmFeedback = this.activity * 200;
+                    this.fmFeedbackGain.gain.setTargetAtTime(targetFmFeedback, now, 0.05);
+
+                    const targetKsFeedback = 0.8 + this.activity * 0.15;
+                    this.ksFeedbackGain.gain.setTargetAtTime(targetKsFeedback, now, 0.05);
+
+                    const targetCutoff = 1500 + this.activity * 3000;
+                    this.ksLowpass.frequency.setTargetAtTime(targetCutoff, now, 0.05);
+
+                    if (x > 0.5) {
+                        const xProgress = (x - 0.5) / 0.5; 
+
+                        const N = 64 - (56 * xProgress);
+
+                        this.currentRhythmDelay = 2.0 / N;
+
+                        if (!this.rhythmTimer) {
+                            this.triggerRhythm();
+                        }
+                    } else {
+                        if (this.rhythmTimer) {
+                            clearTimeout(this.rhythmTimer);
+                            this.rhythmTimer = null;
+                        }
+                        if (this.chopperGain) {
+                            this.chopperGain.gain.cancelScheduledValues(now);
+                            this.chopperGain.gain.setTargetAtTime(1, now, 0.05);
+                        }
+
+                        const exciterLevel = this.mix > 0.5 ? (this.mix - 0.5) * 2 * this.activity * 0.3 : 0;
+                        this.ksExciterGain.gain.setTargetAtTime(exciterLevel, now, 0.1);
+                    }
+                }
+            }
+        }
+
+        const app = {
+            audio: new AudioEngine(),
+            canvas: document.getElementById('canvas'),
+            ctx: document.getElementById('canvas').getContext('2d'),
+
+            width: 0,
+            height: 0,
+
+            mouseX: 0.5,
+            mouseY: 0.5,
+            lastMouseX: 0.5,
+            lastMouseY: 0.5,
+            lastMoveTime: 0,
+
+            grid: [],
+            rows: 0,
+            cols: 0,
+
+            init() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.initGrid();
+
+                const startOverlay = document.getElementById('start-overlay');
+
+                document.body.addEventListener('touchstart', () => {
+                    if (this.audio.ctx && this.audio.ctx.state === 'suspended') {
+                        this.audio.ctx.resume();
+                    }
+                }, { passive: true });
+
+                const startHandler = (e) => {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+
+                    this.audio.init();
+
+                    startOverlay.style.opacity = 0;
+                    setTimeout(() => startOverlay.remove(), 500);
+                    this.loop();
+                };
+                startOverlay.addEventListener('click', startHandler);
+                startOverlay.addEventListener('touchstart', startHandler);
+
+                const scaleBtn = document.getElementById('scale-btn');
+                scaleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const scales = Object.keys(this.audio.scales);
+                    let idx = scales.indexOf(this.audio.currentScale);
+                    idx = (idx + 1) % scales.length;
+                    this.audio.currentScale = scales[idx];
+                    e.target.textContent = `SCALE: ${this.audio.currentScale}`;
+                });
+
+                const delayControls = document.getElementById('delay-controls');
+                const bpmSlider = document.getElementById('bpm-slider');
+                const mixSlider = document.getElementById('mix-slider');
+                const bpmVal = document.getElementById('bpm-val');
+                const mixVal = document.getElementById('mix-val');
+
+                ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mousemove', 'mouseup', 'click'].forEach(evt => {
+                    delayControls.addEventListener(evt, (e) => e.stopPropagation(), { passive: false });
+                });
+
+                bpmSlider.addEventListener('input', (e) => {
+                    const val = parseInt(e.target.value);
+                    this.audio.delayBpm = val;
+                    bpmVal.textContent = val;
+                    this.audio.updateDelaySettings();
+                });
+
+                mixSlider.addEventListener('input', (e) => {
+                    const val = parseInt(e.target.value);
+                    this.audio.delayMixAmount = val;
+                    mixVal.textContent = val + '%';
+                    this.audio.updateDelaySettings();
+                });
+
+                this.setupInteractions();
+            },
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+
+                const isMobile = this.width < this.height;
+                this.rows = isMobile ? 20 : 30;
+                this.cols = isMobile ? 12 : 30;
+
+                this.initGrid();
+            },
+
+            initGrid() {
+                this.grid = [];
+                for (let r = 0; r <= this.rows; r++) {
+                    for (let c = 0; c <= this.cols; c++) {
+                        this.grid.push({
+                            baseX: c / this.cols,
+                            baseY: r / this.rows,
+                            x: c / this.cols,
+                            y: r / this.rows,
+                            z: 0
+                        });
+                    }
+                }
+            },
+
+            setupInteractions() {
+                const getNormalizedCoords = (clientX, clientY) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = (clientX - rect.left) / rect.width;
+                    const y = (clientY - rect.top) / rect.height;
+                    return {
+                        x: Math.max(0, Math.min(1, x)),
+                        y: Math.max(0, Math.min(1, y))
+                    };
+                };
+
+                const calculateMovementSpeed = (x, y, currentTime) => {
+                    if (this.lastMoveTime === 0) {
+                        this.lastMoveTime = currentTime;
+                        return 0;
+                    }
+
+                    const deltaTime = (currentTime - this.lastMoveTime) / 1000;
+                    if (deltaTime === 0) return 0;
+
+                    const dx = x - this.lastMouseX;
+                    const dy = y - this.lastMouseY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const speed = distance / deltaTime;
+
+                    this.lastMouseX = x;
+                    this.lastMouseY = y;
+                    this.lastMoveTime = currentTime;
+
+                    return speed;
+                };
+
+                const updateParams = (clientX, clientY) => {
+                    const { x, y } = getNormalizedCoords(clientX, clientY);
+                    const currentTime = Date.now();
+                    const movementSpeed = calculateMovementSpeed(x, y, currentTime);
+
+                    this.mouseX = x;
+                    this.mouseY = y;
+                    this.audio.update(x, y, movementSpeed);
+
+                    document.getElementById('val-freq').textContent = Math.floor(this.audio.baseFreq) + ' Hz';
+                    const mixPct = Math.floor(this.audio.mix * 100);
+                    document.getElementById('val-mix').textContent = `FM ${100 - mixPct}% / KS ${mixPct}%`;
+                    document.getElementById('val-activity').textContent = Math.floor(this.audio.activity * 100) + '%';
+
+                    document.getElementById('params-display').classList.add('active');
+                };
+
+                const startTouch = (e) => {
+                    const t = e.touches ? e.touches[0] : e;
+
+                    const scaleBtn = document.getElementById('scale-btn');
+                    const rect = scaleBtn.getBoundingClientRect();
+                    const isScaleBtnClick =
+                        t.clientX >= rect.left &&
+                        t.clientX <= rect.right &&
+                        t.clientY >= rect.top &&
+                        t.clientY <= rect.bottom;
+
+                    if (isScaleBtnClick || e.target.closest('#nav-buttons') || e.target.closest('.delay-controls')) {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    const { x, y } = getNormalizedCoords(t.clientX, t.clientY);
+
+                    this.lastMouseX = x;
+                    this.lastMouseY = y;
+                    this.lastMoveTime = Date.now();
+
+                    this.audio.start();
+                    updateParams(t.clientX, t.clientY);
+                };
+
+                const moveTouch = (e) => {
+                    if (!this.audio.isPlaying) return;
+                    e.preventDefault();
+                    const t = e.touches ? e.touches[0] : e;
+                    updateParams(t.clientX, t.clientY);
+                };
+
+                const endTouch = (e) => {
+                    this.audio.stop();
+                    this.lastMoveTime = 0;
+                    document.getElementById('params-display').classList.remove('active');
+                };
+
+                window.addEventListener('mousedown', startTouch);
+                window.addEventListener('mousemove', moveTouch);
+                window.addEventListener('mouseup', endTouch);
+
+                window.addEventListener('touchstart', startTouch, { passive: false });
+                window.addEventListener('touchmove', moveTouch, { passive: false });
+                window.addEventListener('touchend', endTouch);
+            },
+
+            loop() {
+                requestAnimationFrame(() => this.loop());
+
+                if (!this.audio.isPlaying && this.audio.activity > 0) {
+                    this.audio.activity = 0;
+                    this.audio.update(this.mouseX, this.mouseY, 0);
+                }
+
+                this.draw();
+            },
+
+            draw() {
+                const ctx = this.ctx;
+                const w = this.width;
+                const h = this.height;
+
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, w, h);
+
+                let timeData = new Uint8Array(2048);
+                if (this.audio.analyser) {
+                    this.audio.analyser.getByteTimeDomainData(timeData);
+                }
+
+                const mix = this.audio.mix;
+                const activity = this.audio.activity;
+
+                ctx.lineWidth = 1 + mix * 2;
+                ctx.strokeStyle = '#ffffff';
+
+                const project = (x, y, z) => {
+                    const fov = 300;
+                    const scale = fov / (fov + z);
+                    const x2d = (x - 0.5) * w * scale + w / 2;
+                    const y2d = (y - 0.5) * h * scale + h / 2;
+                    return [x2d, y2d];
+                };
+
+                const t = Date.now() * 0.001;
+
+                ctx.beginPath();
+
+                for (let r = 0; r <= this.rows; r++) {
+                    for (let c = 0; c <= this.cols; c++) {
+                        const idx = r * (this.cols + 1) + c;
+                        const p = this.grid[idx];
+
+                        const audioIdx = Math.floor(p.baseX * 2047);
+                        let audioVal = (timeData[audioIdx] / 128.0) - 1.0;
+                        if (!isFinite(audioVal)) audioVal = 0;
+
+                        let displace = 0;
+                        if (mix < 0.5) {
+                            displace = audioVal * 0.2 * (1 - mix);
+                        } else {
+                            const sharp = Math.sign(audioVal) * Math.pow(Math.abs(audioVal), 0.5);
+                            displace = sharp * 0.4 * mix;
+                        }
+
+                        if (activity > 0.1) {
+                            displace += (Math.random() - 0.5) * 0.1 * activity;
+                        }
+
+                        const z = 100 + Math.sin(r * 0.2 + t) * 20;
+                        const finalX = p.baseX;
+                        const finalY = p.baseY + displace;
+                        const [px, py] = project(finalX, finalY, z);
+
+                        if (c === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                }
+
+                for (let c = 0; c <= this.cols; c++) {
+                    for (let r = 0; r <= this.rows; r++) {
+                        const p = this.grid[r * (this.cols + 1) + c];
+                        const audioIdx = Math.floor(p.baseX * 2047);
+                        let audioVal = (timeData[audioIdx] / 128.0) - 1.0;
+                        if (!isFinite(audioVal)) audioVal = 0;
+
+                        let displace = 0;
+                        if (mix < 0.5) {
+                            displace = audioVal * 0.2 * (1 - mix);
+                        } else {
+                            const sharp = Math.sign(audioVal) * Math.pow(Math.abs(audioVal), 0.5);
+                            displace = sharp * 0.4 * mix;
+                        }
+
+                        if (activity > 0.1) displace += (Math.random() - 0.5) * 0.1 * activity;
+
+                        const z = 100 + Math.sin(r * 0.2 + t) * 20;
+                        const finalX = p.baseX;
+                        const finalY = p.baseY + displace;
+                        const [px, py] = project(finalX, finalY, z);
+
+                        if (r === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                }
+
+                ctx.stroke();
+            }
+        };
+
+        window.onload = () => app.init();
+    </script>
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
+        <button onclick="window.location.href='../index.html'"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
+        <button onclick="randomApp()"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
+    </div>
+    <script>
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                 random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+    </script>
+</body>
+
+</html>

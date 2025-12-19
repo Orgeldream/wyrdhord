@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CEORF</title>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #f0f0f0;
+            --accent-color: #a0a0a0;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(12px);
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            touch-action: none;
+        }
+
+        
+        #visualizer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            transform: scale(1.02);
+        }
+
+        
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 32px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            padding: 16px 24px;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            max-width: 100%;
+            width: 100%;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .title-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .subtitle {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            color: var(--accent-color);
+            margin-top: 4px;
+        }
+
+        
+        .controls-container {
+            pointer-events: none;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .controls-glass {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 16px 32px;
+            display: flex;
+            gap: 32px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .param-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 10px;
+            font-family: monospace;
+            color: var(--accent-color);
+            gap: 4px;
+        }
+
+        .param-value {
+            font-size: 14px;
+            color: #fff;
+            font-weight: 400;
+        }
+
+        
+        #file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .upload-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+
+        .start-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff;
+            padding: 24px 48px;
+            font-family: var(--font-main);
+            font-size: 14px;
+            letter-spacing: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 40px;
+            transition: all 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .start-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .start-btn:hover::before {
+            left: 100%;
+        }
+
+        .start-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+
+        .instructions {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 11px;
+            line-height: 2;
+            color: #aaa;
+            letter-spacing: 2px;
+            font-weight: 300;
+        }
+
+        
+        #touch-indicator {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+        }
+
+        #touch-indicator::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="visualizer"></canvas>
+
+    <div class="ui-layer">
+        <div class="header">
+            <div class="title-group">
+                <div class="title">CEORF</div>
+                <div class="subtitle">SPECTRAL PULLER</div>
+            </div>
+            <label class="upload-btn">
+                LOAD AUDIO
+                <input type="file" id="file-input" accept="audio/*">
+            </label>
+        </div>
+
+        <div class="controls-container">
+            <div class="controls-glass">
+                <div class="param-display">
+                    <span>SMEAR</span>
+                    <span id="val-smear" class="param-value">0%</span>
+                </div>
+                <div class="param-display">
+                    <span>POS</span>
+                    <span id="val-time" class="param-value">0:00</span>
+                </div>
+                <div class="param-display">
+                    <span>STATE</span>
+                    <span id="val-state" class="param-value">IDLE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="touch-indicator"></div>
+
+    <div id="start-overlay">
+        <button class="start-btn" id="start-btn">INITIALISE</button>
+        <div class="instructions">
+            DRAG TO SMEAR SPECTRUM<br>
+            DISTANCE FROM CENTER = INTENSITY<br>
+            ROTATION = TIME SCRUB
+        </div>
+    </div>
+
+    <script>
+        class FFT {
+            constructor(size) {
+                this.size = size;
+                this.cosTable = new Float32Array(size / 2);
+                this.sinTable = new Float32Array(size / 2);
+                this.reverseTable = new Uint32Array(size);
+
+                for (let i = 0; i < size / 2; i++) {
+                    this.cosTable[i] = Math.cos(-2 * Math.PI * i / size);
+                    this.sinTable[i] = Math.sin(-2 * Math.PI * i / size);
+                }
+
+                let limit = 1;
+                let bit = size >> 1;
+                let i;
+
+                while (limit < size) {
+                    for (i = 0; i < limit; i++) {
+                        this.reverseTable[i + limit] = this.reverseTable[i] + bit;
+                    }
+                    limit = limit << 1;
+                    bit = bit >> 1;
+                }
+            }
+
+            transform(real, imag) {
+                const size = this.size;
+                const rev = this.reverseTable;
+                for (let i = 0; i < size; i++) {
+                    const j = rev[i];
+                    if (j > i) {
+                        const tempR = real[i];
+                        const tempI = imag[i];
+                        real[i] = real[j];
+                        imag[i] = imag[j];
+                        real[j] = tempR;
+                        imag[j] = tempI;
+                    }
+                }
+
+                let halfSize = 1;
+                while (halfSize < size) {
+                    const phaseShiftStepReal = Math.cos(-Math.PI / halfSize);
+                    const phaseShiftStepImag = Math.sin(-Math.PI / halfSize);
+                    let currentPhaseShiftReal = 1;
+                    let currentPhaseShiftImag = 0;
+
+                    for (let fftStep = 0; fftStep < halfSize; fftStep++) {
+                        let i = fftStep;
+                        while (i < size) {
+                            const off = i + halfSize;
+                            const tr = (currentPhaseShiftReal * real[off]) - (currentPhaseShiftImag * imag[off]);
+                            const ti = (currentPhaseShiftReal * imag[off]) + (currentPhaseShiftImag * real[off]);
+                            real[off] = real[i] - tr;
+                            imag[off] = imag[i] - ti;
+                            real[i] += tr;
+                            imag[i] += ti;
+                            i += halfSize * 2;
+                        }
+                        const tmpReal = currentPhaseShiftReal;
+                        currentPhaseShiftReal = (tmpReal * phaseShiftStepReal) - (currentPhaseShiftImag * phaseShiftStepImag);
+                        currentPhaseShiftImag = (tmpReal * phaseShiftStepImag) + (currentPhaseShiftImag * phaseShiftStepReal);
+                    }
+                    halfSize = halfSize << 1;
+                }
+            }
+
+            inverseTransform(real, imag) {
+                for (let i = 0; i < this.size; i++) imag[i] = -imag[i];
+                this.transform(real, imag);
+                const scale = 1 / this.size;
+                for (let i = 0; i < this.size; i++) {
+                    imag[i] = -imag[i] * scale;
+                    real[i] = real[i] * scale;
+                }
+            }
+        }
+
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.buffer = null;
+                this.reversedBuffer = null; 
+                this.scriptNode = null;
+                this.fft = null;
+                this.gainNode = null;
+
+                this.bufferSize = 4096;
+                this.hopSize = 1024;
+
+                this.isPlaying = false;
+
+                this.scrubPosition = 0;
+                this.smoothScrubPosition = 0;
+
+                this.smearAmount = 0;
+                this.isTouching = false;
+
+                this.real = new Float32Array(this.bufferSize);
+                this.imag = new Float32Array(this.bufferSize);
+
+                this.accumReal = new Float32Array(this.bufferSize);
+                this.accumImag = new Float32Array(this.bufferSize);
+                this.prevPhase = new Float32Array(this.bufferSize);
+
+                this.outputAccum = new Float32Array(this.bufferSize);
+                this.outputPtr = 0;
+
+                this.window = new Float32Array(this.bufferSize);
+                for (let i = 0; i < this.bufferSize; i++) {
+                    this.window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (this.bufferSize - 1)));
+                }
+
+                this.gateGain = 0;
+
+                this.currentRMS = 0;
+
+                this.audioAmplitude = 0;
+                this.smoothAmplitude = 0;
+                this.peakAmplitude = 0;
+                this.volumeHistory = new Array(60).fill(0); 
+            }
+
+            async init() {
+                if (this.ctx) return;
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.fft = new FFT(this.bufferSize);
+
+                this.gainNode = this.ctx.createGain();
+                this.gainNode.gain.value = 1.0;
+
+                this.scriptNode = this.ctx.createScriptProcessor(this.bufferSize, 1, 1);
+                this.scriptNode.onaudioprocess = this.process.bind(this);
+
+                this.scriptNode.connect(this.gainNode);
+                this.gainNode.connect(this.ctx.destination);
+            }
+
+            async loadFile(file) {
+                const arrayBuffer = await file.arrayBuffer();
+                this.buffer = await this.ctx.decodeAudioData(arrayBuffer);
+
+                this.reversedBuffer = this.ctx.createBuffer(
+                    this.buffer.numberOfChannels,
+                    this.buffer.length,
+                    this.buffer.sampleRate
+                );
+                for (let c = 0; c < this.buffer.numberOfChannels; c++) {
+                    const src = this.buffer.getChannelData(c);
+                    const dest = this.reversedBuffer.getChannelData(c);
+                    for (let i = 0; i < this.buffer.length; i++) {
+                        dest[i] = src[this.buffer.length - 1 - i];
+                    }
+                }
+
+                this.isPlaying = true;
+            }
+
+            setParams(angle, distance, isTouching) {
+                let normAngle = angle / (2 * Math.PI);
+                if (normAngle < 0) normAngle += 1;
+
+                this.scrubPosition = normAngle;
+                this.smearAmount = Math.max(0, Math.min(1, distance));
+                this.isTouching = isTouching;
+            }
+
+            process(e) {
+                const output = e.outputBuffer.getChannelData(0);
+
+                if (!this.buffer) {
+                    output.fill(0);
+                    return;
+                }
+
+                const targetGate = this.isTouching ? 1.0 : 0.0;
+
+                let sum = 0;
+                let max = 0;
+                for (let i = 0; i < this.bufferSize; i++) {
+                    if (this.outputPtr % this.hopSize === 0) {
+                        this.computeSpectralFrame();
+                    }
+
+                    const idx = this.outputPtr % this.bufferSize;
+                    const sample = this.outputAccum[idx] * this.gateGain;
+                    output[i] = sample;
+
+                    const absSample = Math.abs(sample);
+                    sum += absSample;
+                    if (absSample > max) max = absSample;
+
+                    this.outputAccum[idx] = 0;
+                    this.outputPtr++;
+                }
+
+                this.audioAmplitude = sum / this.bufferSize; 
+                this.smoothAmplitude += (this.audioAmplitude - this.smoothAmplitude) * 0.2;
+
+                if (max > this.peakAmplitude) {
+                    this.peakAmplitude = max;
+                } else {
+                    this.peakAmplitude *= 0.995; 
+                }
+
+                this.volumeHistory.push(this.smoothAmplitude);
+                this.volumeHistory.shift();
+
+                const attackRate = 0.02; 
+                const releaseRate = 0.08; 
+                const rate = this.isTouching ? attackRate : releaseRate;
+                this.gateGain += (targetGate - this.gateGain) * rate;
+            }
+
+            computeSpectralFrame() {
+                const chanData = this.buffer.getChannelData(0);
+                const revData = this.reversedBuffer.getChannelData(0);
+                const len = chanData.length;
+
+                const dist = this.scrubPosition - this.smoothScrubPosition;
+                let delta = dist;
+                if (delta > 0.5) delta -= 1;
+                if (delta < -0.5) delta += 1;
+
+                this.smoothScrubPosition += delta * 0.1;
+                if (this.smoothScrubPosition < 0) this.smoothScrubPosition += 1;
+                if (this.smoothScrubPosition >= 1) this.smoothScrubPosition -= 1;
+
+                const samplePos = Math.floor(this.smoothScrubPosition * len);
+
+                let sumSq = 0;
+                for (let i = 0; i < this.bufferSize; i += 16) { 
+                    let idx = samplePos - (this.bufferSize / 2) + i;
+                    while (idx < 0) idx += len;
+                    while (idx >= len) idx -= len;
+                    sumSq += chanData[idx] * chanData[idx];
+                }
+                const rms = Math.sqrt(sumSq / (this.bufferSize / 16));
+                this.currentRMS = this.currentRMS * 0.9 + rms * 0.1; 
+
+                let reverseMix = 1.0 - (this.currentRMS * 15.0);
+                reverseMix = Math.max(0, Math.min(1, reverseMix));
+
+                for (let i = 0; i < this.bufferSize; i++) {
+                    let idx = samplePos - (this.bufferSize / 2) + i;
+                    while (idx < 0) idx += len;
+                    while (idx >= len) idx -= len;
+
+                    let revIdx = len - 1 - idx;
+                    while (revIdx < 0) revIdx += len;
+                    while (revIdx >= len) revIdx -= len;
+
+                    const fwdSample = chanData[idx];
+                    const revSample = revData[revIdx];
+
+                    const mixedSample = fwdSample + (revSample * reverseMix * 0.8);
+
+                    this.real[i] = mixedSample * this.window[i];
+                    this.imag[i] = 0;
+                }
+
+                this.fft.transform(this.real, this.imag);
+
+                const half = this.bufferSize / 2;
+                const feedback = this.smearAmount * 0.98;
+                const blur = this.smearAmount * 0.5;
+
+                for (let i = 0; i < half; i++) {
+                    let mag = Math.sqrt(this.real[i] ** 2 + this.imag[i] ** 2);
+                    let phase = Math.atan2(this.imag[i], this.real[i]);
+
+                    this.accumReal[i] = this.accumReal[i] * feedback + mag * (1 - feedback);
+                    mag = this.accumReal[i];
+
+                    if (i > 0 && i < half - 1) {
+                        if (blur > 0) {
+                            const left = this.accumReal[i - 1];
+                            const right = this.accumReal[i + 1];
+                            const center = this.accumReal[i];
+                            this.accumReal[i] = center * (1 - blur) + (left + right) * 0.5 * blur;
+                        }
+                    }
+
+                    if (this.smearAmount > 0.1) {
+                        phase += (Math.random() - 0.5) * this.smearAmount * 0.5;
+                    }
+
+                    this.real[i] = mag * Math.cos(phase);
+                    this.imag[i] = mag * Math.sin(phase);
+
+                    if (i > 0) {
+                        this.real[this.bufferSize - i] = this.real[i];
+                        this.imag[this.bufferSize - i] = -this.imag[i];
+                    }
+                }
+
+                this.fft.inverseTransform(this.real, this.imag);
+
+                for (let i = 0; i < this.bufferSize; i++) {
+                    const writeIdx = (this.outputPtr + i) % this.bufferSize;
+                    this.outputAccum[writeIdx] += this.real[i] * this.window[i] * 0.5;
+                }
+            }
+        }
+
+        const app = {
+            audio: new AudioEngine(),
+            canvas: document.getElementById('visualizer'),
+            ctx: document.getElementById('visualizer').getContext('2d'),
+            touchIndicator: document.getElementById('touch-indicator'),
+
+            offscreenCanvas: document.createElement('canvas'),
+            offscreenCtx: null,
+            lastDrawTime: 0,
+            fadeAlpha: 0,
+
+            init() {
+                this.offscreenCtx = this.offscreenCanvas.getContext('2d');
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                document.getElementById('start-btn').addEventListener('click', async () => {
+                    await this.audio.init();
+                    document.getElementById('start-overlay').style.opacity = 0;
+                    setTimeout(() => document.getElementById('start-overlay').remove(), 800);
+                    this.startLoop();
+                });
+
+                document.getElementById('file-input').addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.audio.loadFile(e.target.files[0]);
+                        document.getElementById('val-state').textContent = "PLAYING";
+                    }
+                });
+
+                this.setupInteractions();
+            },
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.offscreenCanvas.width = window.innerWidth;
+                this.offscreenCanvas.height = window.innerHeight;
+            },
+
+            setupInteractions() {
+                const handleMove = (x, y) => {
+                    const w = window.innerWidth;
+                    const h = window.innerHeight;
+                    const cx = w / 2;
+                    const cy = h / 2;
+                    const dx = x - cx;
+                    const dy = y - cy;
+
+                    let angle = Math.atan2(dy, dx);
+                    if (angle < 0) angle += 2 * Math.PI;
+
+                    const maxDist = Math.min(w, h) / 2;
+                    let dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
+
+                    let smear = 0;
+                    if (dist > 0.1) {
+                        smear = (dist - 0.1) / 0.9;
+                    }
+                    smear = Math.max(0, Math.min(1, smear));
+
+                    this.audio.setParams(angle, smear, true);
+
+                    document.getElementById('val-smear').textContent = `${Math.floor(smear * 100)}%`;
+                    const totalSecs = (this.audio.buffer ? this.audio.buffer.duration : 0) * (angle / (2 * Math.PI));
+                    const mins = Math.floor(totalSecs / 60);
+                    const secs = Math.floor(totalSecs % 60).toString().padStart(2, '0');
+                    document.getElementById('val-time').textContent = `${mins}:${secs}`;
+
+                    this.touchIndicator.style.display = 'block';
+                    this.touchIndicator.style.left = x + 'px';
+                    this.touchIndicator.style.top = y + 'px';
+                };
+
+                const endInteraction = () => {
+                    this.audio.setParams(0, 0, false);
+                    this.touchIndicator.style.display = 'none';
+                };
+
+                window.addEventListener('mousedown', (e) => {
+                    if (e.button === 0) handleMove(e.clientX, e.clientY);
+                });
+                window.addEventListener('mousemove', (e) => {
+                    if (e.buttons === 1) handleMove(e.clientX, e.clientY);
+                });
+                window.addEventListener('mouseup', endInteraction);
+
+                window.addEventListener('touchstart', (e) => {
+                    if (e.target.closest('button, input, label')) {
+                        return;
+                    }
+                    e.preventDefault();
+                    handleMove(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: false });
+                window.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    handleMove(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: false });
+                window.addEventListener('touchend', endInteraction);
+            },
+
+            startLoop() {
+                const loop = () => {
+                    this.draw();
+                    requestAnimationFrame(loop);
+                };
+                loop();
+            },
+
+            draw() {
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+                const ctx = this.ctx;
+
+                const hasActivity = this.audio.isTouching || this.audio.smoothAmplitude > 0.01;
+
+                if (hasActivity) {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.fillStyle = 'rgba(5, 5, 5, 0.03)'; 
+                    ctx.fillRect(0, 0, w, h);
+                } else {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.fillStyle = '#050505';
+                    ctx.fillRect(0, 0, w, h);
+                }
+
+                if (!this.audio.isPlaying || !this.audio.buffer) return;
+
+                const data = this.audio.accumReal;
+                const halfSize = this.audio.bufferSize / 2;
+                const cx = w / 2;
+                const cy = h / 2;
+
+                const drawCount = 256;
+                const binStep = Math.floor(halfSize / drawCount);
+
+                const baseRadius = Math.min(w, h) * 0.05;
+                const amplitudeFactor = Math.min(this.audio.smoothAmplitude * 100, 1.0); 
+
+                const touchFactor = this.audio.gateGain;
+                const baseGrowth = touchFactor * (Math.min(w, h) * 0.15);
+                const minRadius = baseGrowth + (amplitudeFactor * Math.min(w, h) * 0.15);
+                const maxRadius = Math.min(w, h) * 0.45;
+
+                if (minRadius < 1) return;
+
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                ctx.strokeStyle = `rgba(255, 255, 255, 0.9)`;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = `rgba(255, 255, 255, 0.6)`;
+
+                ctx.beginPath();
+                for (let i = 0; i <= drawCount; i++) {
+                    const binIdx = (i % drawCount) * binStep;
+                    let mag = Math.abs(data[binIdx]);
+                    mag = Math.log(1 + mag * 1000) * 20;
+
+                    const angle = (i / drawCount) * 2 * Math.PI;
+                    const rot = this.audio.smoothScrubPosition * 2 * Math.PI;
+
+                    const r = minRadius + Math.min(mag, maxRadius - minRadius);
+
+                    const x = cx + Math.cos(angle + rot) * r;
+                    const y = cy + Math.sin(angle + rot) * r;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else {
+                        const prevAngle = ((i - 1) / drawCount) * 2 * Math.PI;
+                        const prevIdx = ((i - 1) % drawCount) * binStep;
+                        let prevMag = Math.abs(data[prevIdx]);
+                        prevMag = Math.log(1 + prevMag * 1000) * 20;
+                        const prevR = minRadius + Math.min(prevMag, maxRadius - minRadius);
+                        const prevX = cx + Math.cos(prevAngle + rot) * prevR;
+                        const prevY = cy + Math.sin(prevAngle + rot) * prevR;
+
+                        const midX = (prevX + x) / 2;
+                        const midY = (prevY + y) / 2;
+
+                        if (i === 1) ctx.lineTo(midX, midY);
+                        else ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+                    }
+                }
+                ctx.closePath();
+                ctx.stroke();
+
+                this.drawVolumeDisplay(ctx, cx, cy, Math.min(w, h) * 0.15);
+            },
+
+            drawVolumeDisplay(ctx, cx, cy, maxRadius) {
+                const volume = this.audio.smoothAmplitude;
+                const peak = this.audio.peakAmplitude;
+
+                const touchFactor = this.audio.gateGain;
+                const displayRadius = maxRadius * (0.3 + touchFactor * 0.7); 
+
+                const vuRadius = Math.min(displayRadius * 0.8, volume * displayRadius * 3);
+                const peakRadius = Math.min(displayRadius * 0.9, peak * displayRadius * 3);
+
+                if (touchFactor > 0.1 || volume > 0.01) {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    if (volume > 0.001) {
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, vuRadius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + volume * 0.7})`;
+                        ctx.fill();
+                    }
+
+                    if (peak > 0.001) {
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, peakRadius, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+
+                    const history = this.audio.volumeHistory;
+                    const segmentAngle = (Math.PI * 2) / history.length;
+
+                    ctx.beginPath();
+                    for (let i = 0; i < history.length; i++) {
+                        const angle = i * segmentAngle;
+                        const waveRadius = displayRadius * 0.6 + (history[i] * displayRadius * 2);
+                        const x = cx + Math.cos(angle) * waveRadius;
+                        const y = cy + Math.sin(angle) * waveRadius;
+
+                        if (i === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.fill();
+                }
+            }
+        };
+
+        window.onload = () => app.init();
+    </script>
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
+        <button onclick="window.location.href='../index.html'"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
+        <button onclick="randomApp()"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
+    </div>
+    <script>
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                 random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+    </script>
+</body>
+
+</html>

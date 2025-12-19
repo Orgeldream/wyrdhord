@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Touch rhythm file</title>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --fg-color: #ffffff;
+            --accent-color: #333333;
+            --font-family: 'Josefin Sans', sans-serif;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--fg-color);
+            font-family: var(--font-family);
+            overflow: hidden;
+            touch-action: none;
+            
+        }
+
+        #app {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #init-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            cursor: pointer;
+            transition: opacity 0.5s ease;
+        }
+
+        #init-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #init-text {
+            font-size: 24px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            font-weight: 300;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .top-controls {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        .bottom-controls {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+            margin-bottom: 20px;
+        }
+
+        
+        .pattern-indicator {
+            display: flex;
+            gap: 4px;
+        }
+
+        .pattern-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #333;
+            transition: all 0.1s;
+        }
+
+        .pattern-dot.active {
+            background: #fff;
+            transform: scale(1.5);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        
+        .slider-container {
+            width: 80%;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #666;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: var(--fg-color);
+            cursor: pointer;
+            margin-top: -5px;
+            
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #333;
+        }
+
+        
+        #touch-marker {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+        }
+
+        #touch-marker.active {
+            display: block;
+            animation: ripple 1s infinite;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="init-overlay">
+        <div id="init-text">Touch to Initialise</div>
+        <div id="loading-text" style="display:none; font-size: 14px; margin-top: 20px; color: #888;">Processing Audio...
+        </div>
+    </div>
+
+    <input type="file" id="file-input" accept="audio/*" style="display: none;">
+
+    <div id="app">
+        <canvas id="visualizer"></canvas>
+        <div id="touch-marker"></div>
+
+        <div id="ui-layer">
+            <div class="top-controls">
+                <div class="pattern-indicator" id="pattern-indicator">
+                    <!-- Dots generated by JS -->
+                </div>
+            </div>
+
+            <div id="file-trigger"
+                style="position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 10px; letter-spacing: 2px; border: 1px solid #333; padding: 5px 10px; border-radius: 15px; pointer-events: auto;">
+                LOAD SAMPLE
+            </div>
+
+            <div class="bottom-controls">
+                <div class="slider-container">
+                    <label for="bpm">TEMPO <span id="bpm-val">120</span></label>
+                    <input type="range" id="bpm" min="60" max="200" step="1" value="120">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx;
+        let isPlaying = false;
+        let isTouching = false;
+
+        let masterGain;
+        let analyser;
+        let panner;
+
+        let audioBuffer = null;
+        let transients = [];
+        let isProcessing = false;
+
+        let schedulerTimer;
+        let nextNoteTime = 0.0;
+        let lookahead = 25.0;
+        let scheduleAheadTime = 0.1;
+        let noteCount = 0; 
+
+        let bpm = 120;
+
+        let density = 0;      
+        let quantize = 0;     
+        let filterFreq = 100; 
+        let filterQ = 0.001;
+        let stereoWidth = 0;
+        let panVal = 0;
+
+        let currentRate = 16; 
+        let rateDivider = 4;  
+        let currentFilterType = 'bandpass';
+
+
+        function findTransients(buffer) {
+            const channelData = buffer.getChannelData(0); 
+            const sampleRate = buffer.sampleRate;
+            const foundTransients = [];
+
+            const windowSize = Math.floor(sampleRate * 0.01); 
+            let energyHistory = new Float32Array(100); 
+            let historyIndex = 0;
+
+            const sensitivity = 1.5; 
+            const silenceThresh = 0.01;
+            const minDistance = Math.floor(sampleRate * 0.05); 
+
+            let lastTransient = -minDistance;
+
+            for (let i = 0; i < channelData.length - windowSize; i += windowSize) {
+                let sum = 0;
+                for (let j = 0; j < windowSize; j++) {
+                    sum += channelData[i + j] * channelData[i + j];
+                }
+                const rms = Math.sqrt(sum / windowSize);
+
+                let historySum = 0;
+                for (let k = 0; k < energyHistory.length; k++) historySum += energyHistory[k];
+                const historyAvg = historySum / energyHistory.length;
+
+                if (rms > silenceThresh && rms > historyAvg * sensitivity && (i - lastTransient) > minDistance) {
+                    foundTransients.push(i / sampleRate);
+                    lastTransient = i;
+                }
+
+                energyHistory[historyIndex] = rms;
+                historyIndex = (historyIndex + 1) % energyHistory.length;
+            }
+
+            if (foundTransients.length === 0) {
+                foundTransients.push(0);
+                for (let t = 0.5; t < buffer.duration; t += 0.5) {
+                    foundTransients.push(t);
+                }
+            }
+
+            return foundTransients;
+        }
+
+        const fileInput = document.getElementById('file-input');
+        const fileTrigger = document.getElementById('file-trigger');
+        const loadingText = document.getElementById('loading-text');
+
+        fileTrigger.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            if (e.target.files.length === 0) return;
+            const file = e.target.files[0];
+
+            loadingText.style.display = 'block';
+            loadingText.textContent = "Decoding " + file.name + "...";
+            initOverlay.classList.remove('hidden'); 
+
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const arrayBuffer = await file.arrayBuffer();
+                const decodedAudio = await audioCtx.decodeAudioData(arrayBuffer);
+
+                audioBuffer = decodedAudio;
+                loadingText.textContent = "Analyzing Transients...";
+
+                setTimeout(() => {
+                    transients = findTransients(audioBuffer);
+                    console.log("Found " + transients.length + " transients");
+
+                    loadingText.style.display = 'none';
+                    initOverlay.classList.add('hidden'); 
+
+                    if (!isPlaying) {
+                        isPlaying = true;
+                        nextNoteTime = audioCtx.currentTime;
+                        scheduler();
+                    }
+
+                    fileTrigger.textContent = file.name.substring(0, 15) + (file.name.length > 15 ? '...' : '');
+                    fileTrigger.style.borderColor = '#fff';
+                }, 100);
+
+            } catch (err) {
+                console.error("Error loading file:", err);
+                loadingText.textContent = "Error loading file.";
+            }
+        });
+
+        const initOverlay = document.getElementById('init-overlay');
+        const bpmInput = document.getElementById('bpm');
+        const bpmVal = document.getElementById('bpm-val');
+        const patternIndicator = document.getElementById('pattern-indicator');
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        const touchMarker = document.getElementById('touch-marker');
+
+        function initPatternDots() {
+            patternIndicator.innerHTML = '';
+            for (let i = 0; i < 16; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'pattern-dot';
+                patternIndicator.appendChild(dot);
+            }
+        }
+        initPatternDots();
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        async function initAudio() {
+            if (audioCtx) return;
+
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                panner = audioCtx.createStereoPanner();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0; 
+
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.8;
+
+                panner.connect(masterGain);
+                masterGain.connect(analyser);
+                analyser.connect(audioCtx.destination);
+
+                console.log('Audio initialized');
+            } catch (e) {
+                console.error('Audio init failed', e);
+            }
+        }
+
+        function nextNote() {
+            const secondsPerBeat = 60.0 / bpm;
+            const secondsPer64th = secondsPerBeat / 16;
+            nextNoteTime += secondsPer64th;
+            noteCount++;
+        }
+
+        function getPatternValue(position, channel) {
+            const step16 = Math.floor(position / 4) % 16;
+
+            const widthOffset = Math.floor((stereoWidth / 100) * 8);
+
+            const leftPattern = [1.0, 0.2, 0.6, 0.1, 0.8, 0.1, 0.4, 0.3, 0.9, 0.3, 0.7, 0.2, 0.6, 0.4, 0.5, 0.1];
+            const rightPattern = [0.1, 0.8, 0.2, 0.7, 0.3, 0.9, 0.1, 0.6, 0.2, 0.7, 0.3, 0.8, 0.4, 0.5, 0.6, 0.2];
+
+            const pattern = channel === 'left' ? leftPattern : rightPattern;
+            const shiftedPos = (step16 + (channel === 'right' ? widthOffset : 0)) % 16;
+            return pattern[shiftedPos];
+        }
+
+        function playFragment(time, channel) {
+            if (!audioBuffer || transients.length === 0) return;
+
+            const transientIndex = Math.floor(Math.random() * transients.length);
+            const startTime = transients[transientIndex];
+
+            const duration = (60 / bpm / 16) * rateDivider;
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = currentFilterType; 
+
+
+            const freqRandom = 1.0 + (Math.random() * 0.2 - 0.1);
+            filter.frequency.value = Math.max(20, Math.min(20000, filterFreq * freqRandom));
+            filter.Q.value = filterQ;
+
+            const gainNode = audioCtx.createGain();
+
+            gainNode.gain.setValueAtTime(0, time);
+            gainNode.gain.linearRampToValueAtTime(1.0, time + 0.005); 
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration); 
+
+            const voicePanner = audioCtx.createStereoPanner();
+
+            const widthVal = stereoWidth / 100;
+            const randomPan = (Math.random() * 2 - 1) * widthVal;
+
+            if (channel === 'left') {
+                voicePanner.pan.value = -0.5 * widthVal;
+            } else if (channel === 'right') {
+                voicePanner.pan.value = 0.5 * widthVal;
+            } else {
+                voicePanner.pan.value = randomPan;
+            }
+
+            source.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(voicePanner);
+            voicePanner.connect(panner); 
+
+            source.start(time, startTime, duration + 0.1); 
+            source.stop(time + duration + 0.2);
+
+            source.onended = () => {
+                source.disconnect();
+                filter.disconnect();
+                gainNode.disconnect();
+                voicePanner.disconnect();
+            };
+        }
+
+        function scheduleNote(time) {
+            if (!isTouching) return;
+
+            if (noteCount % rateDivider !== 0) return;
+
+            const quantizeNorm = quantize / 100;
+
+            const leftValue = getPatternValue(noteCount, 'left');
+            const rightValue = getPatternValue(noteCount, 'right');
+
+            const densityNorm = density / 100;
+
+
+            if (Math.random() < densityNorm * leftValue) {
+                playFragment(time, 'left');
+            }
+
+            if (Math.random() < densityNorm * rightValue) {
+                playFragment(time, 'right');
+            }
+
+            if (panner) {
+                panner.pan.setTargetAtTime(panVal, time, 0.05);
+            }
+
+            updatePatternIndicator();
+        }
+
+        function updatePatternIndicator() {
+            requestAnimationFrame(() => {
+                const step16 = Math.floor(noteCount / 4) % 16;
+                const dots = patternIndicator.children;
+                for (let i = 0; i < dots.length; i++) {
+                    if (i === step16) {
+                        dots[i].classList.add('active');
+                    } else {
+                        dots[i].classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        function scheduler() {
+            if (!isPlaying) return;
+            while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+                scheduleNote(nextNoteTime);
+                nextNote();
+            }
+            schedulerTimer = setTimeout(scheduler, lookahead);
+        }
+
+
+        function updateParamsFromInput(x, y) {
+            const centerX = 0.5;
+            const centerY = 0.5;
+
+            const dx = x - centerX;
+            const dy = y - centerY;
+
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx); 
+
+
+            if (dist < 0.25) {
+                rateDivider = 8; 
+            } else if (dist < 0.45) {
+                rateDivider = 4; 
+            } else if (dist < 0.55) {
+                rateDivider = 2; 
+            } else {
+                rateDivider = 1; 
+            }
+
+
+            let paramPos = Math.min(dist / 0.5, 1.0);
+
+            density = 90 + (paramPos * 10);
+
+            quantize = Math.floor((1.0 - Math.pow(paramPos, 2)) * 100);
+
+            stereoWidth = 100 - (paramPos * 70);
+
+            if (angle > -Math.PI / 2 && angle <= 0) {
+                currentFilterType = 'lowpass';
+            } else if (angle > 0 && angle <= Math.PI / 2) {
+                currentFilterType = 'bandpass';
+            } else if (angle > Math.PI / 2 && angle <= Math.PI) {
+                currentFilterType = 'highpass';
+            } else {
+                currentFilterType = 'notch';
+            }
+
+
+            const angleNorm = (angle + Math.PI) / (2 * Math.PI);
+            filterFreq = 50 + (angleNorm * 10000);
+
+            if (rateDivider >= 4) {
+                filterQ = 0.005 + (Math.random() * 0.015);
+            } else {
+                filterQ = 0.001 + (paramPos * 0.02);
+            }
+
+            panVal = (x * 2) - 1;
+
+            touchMarker.style.left = (x * 100) + '%';
+            touchMarker.style.top = (y * 100) + '%';
+
+            touchMarker.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+            touchMarker.style.fontSize = "10px";
+            touchMarker.style.textAlign = "center";
+            touchMarker.style.display = "flex";
+            touchMarker.style.justifyContent = "center";
+            touchMarker.style.alignItems = "center";
+            touchMarker.innerText = ''; 
+        }
+
+        function startInteraction(e) {
+            if (e.target.closest('#file-trigger') || e.target.closest('.bottom-controls') || e.target.closest('.top-controls')) return;
+            if (!audioCtx) initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            isTouching = true;
+            touchMarker.classList.add('active');
+
+            if (masterGain) {
+                masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                masterGain.gain.setTargetAtTime(1.2, audioCtx.currentTime, 0.1);
+            }
+
+            handleMove(e);
+
+            if (!isPlaying) {
+                isPlaying = true;
+                nextNoteTime = audioCtx.currentTime;
+                scheduler();
+            }
+        }
+
+        function endInteraction() {
+            isTouching = false;
+            touchMarker.classList.remove('active');
+
+            if (masterGain) {
+                masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+            }
+        }
+
+        function handleMove(e) {
+            if (!isTouching) return;
+            if (e.target.closest('#file-trigger') || e.target.closest('.bottom-controls') || e.target.closest('.top-controls')) return;
+            e.preventDefault();
+
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            const x = clientX / window.innerWidth;
+            const y = clientY / window.innerHeight;
+
+            updateParamsFromInput(x, y);
+        }
+
+        const app = document.getElementById('app');
+
+        app.addEventListener('mousedown', startInteraction);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', endInteraction);
+
+        app.addEventListener('touchstart', startInteraction, { passive: false });
+        app.addEventListener('touchmove', handleMove, { passive: false });
+        app.addEventListener('touchend', endInteraction);
+
+        initOverlay.addEventListener('click', async () => {
+            await initAudio();
+
+            if (!audioBuffer) {
+                fileTrigger.style.backgroundColor = '#333';
+                setTimeout(() => fileTrigger.style.backgroundColor = 'transparent', 500);
+            }
+
+            initOverlay.classList.add('hidden');
+            isPlaying = true;
+            nextNoteTime = audioCtx.currentTime;
+            scheduler();
+        });
+
+        bpmInput.addEventListener('input', (e) => {
+            bpm = parseInt(e.target.value);
+            bpmVal.textContent = bpm;
+            e.stopPropagation(); 
+        });
+
+        document.querySelector('.bottom-controls').addEventListener('mousedown', (e) => e.stopPropagation());
+        document.querySelector('.bottom-controls').addEventListener('touchstart', (e) => e.stopPropagation());
+
+
+        function draw() {
+            requestAnimationFrame(draw);
+            if (!analyser) return;
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const maxR = Math.min(cx, cy); 
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.5, 0, Math.PI * 2); ctx.stroke(); 
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.9, 0, Math.PI * 2); ctx.stroke(); 
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 1.1, 0, Math.PI * 2); ctx.stroke(); 
+
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR, cy); ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + maxR); ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - maxR, cy); ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - maxR); ctx.stroke(); 
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.beginPath();
+
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+
+                x += sliceWidth;
+            }
+
+            ctx.stroke();
+        }
+        draw();
+
+    </script>
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
+        <button onclick="window.location.href='../index.html'"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
+        <button onclick="randomApp()"
+            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
+            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
+    </div>
+    <script>
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                 random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+    </script>
+</body>
+
+</html>

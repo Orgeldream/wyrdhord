@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WYRDHORD</title>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --accent-color: #888;
+            --hover-color: #fff;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Josefin Sans', sans-serif;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            
+            padding: 16px;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            text-align: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+            color: var(--text-color);
+            text-transform: uppercase;
+        }
+
+        .description {
+            font-size: 11px;
+            color: var(--accent-color);
+            font-weight: 300;
+            line-height: 1.3;
+        }
+
+        .resources {
+            display: flex;
+            justify-content: center;
+            padding: 10px 0;
+            flex-shrink: 0;
+        }
+
+        .resource-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            padding: 6px 16px;
+            border-radius: 12px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        .resource-link:hover {
+            border-color: var(--hover-color);
+            color: var(--hover-color);
+        }
+
+        .app-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            align-content: start;
+            
+            gap: 8px;
+            
+            padding-top: 8px;
+            padding-bottom: 80px;
+            
+        }
+
+        .app-item {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            transition: background 0.2s;
+            gap: 12px;
+            justify-content: flex-start;
+        }
+
+        .app-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+            background: #111;
+        }
+
+        .app-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .app-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-name {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .app-desc {
+            font-size: 10px;
+            color: var(--accent-color);
+            margin-top: 2px;
+        }
+
+        
+        @media (min-height: 700px) {
+            .app-list {
+                gap: 10px;
+            }
+
+            .app-item {
+                padding: 12px 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>WYRDHORD</h1>
+            <p class="description">Web-based sound instruments exploring touch, feedback, and degradation.</p>
+        </header>
+
+        <div class="resources">
+            <a href="https://drive.google.com/drive/folders/1ERnkzRlHJ0chizKEQyHp4GSoehDD0-E9" target="_blank"
+                class="resource-link">Audio files to use</a>
+        </div>
+
+        <div class="app-list">
+            <a href="freosan/" class="app-item">
+                <img src="freosan/freosan.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">F r e o s a n - Granular freezing</span>
+                </div>
+            </a>
+
+            <a href="bryne/" class="app-item">
+                <img src="bryne/bryne.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">B r y n e - Touch acid lines</span>
+                </div>
+            </a>
+
+            <a href="hrinan/" class="app-item">
+                <img src="hrinan/hrinan.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">H r i n a n - Lofi looping FX</span>
+                </div>
+            </a>
+
+            <a href="ginung/" class="app-item">
+                <img src="ginung/ginung.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">G i n u n g - Feedback machine</span>
+                </div>
+            </a>
+
+            <a href="druh/" class="app-item">
+                <img src="druh/druh.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">D r u h - Crackle beats</span>
+                </div>
+            </a>
+
+            <a href="ceorf/" class="app-item">
+                <img src="ceorf/ceorf.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">C e o r f - Spectral puller</span>
+                </div>
+            </a>
+
+            <a href="bloma/" class="app-item">
+                <img src="bloma/bloma.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">B l o m a - FM feedback</span>
+                </div>
+            </a>
+
+            <a href="mynd/" class="app-item">
+                <img src="mynd/mynd.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">M y n d - Degraded looper</span>
+                </div>
+            </a>
+
+            <a href="hrisian/" class="app-item">
+                <img src="hrisian/hrisian.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">H r i s i a n - Resonant body</span>
+                </div>
+            </a>
+
+            <a href="tocnyssan/" class="app-item">
+                <img src="tocnyssan/tocnyssan.jpeg" class="app-icon" alt="">
+                <div class="app-info">
+                    <span class="app-name">T o c n y s s a n - Segmenter</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</body>
+
+</html>
