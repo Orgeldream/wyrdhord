@@ -424,11 +424,55 @@
                 await Tone.start();
                 initAudioEffects();
                 audioInitialized = true;
+                await loadCeramic();
             }
         }
 
         fileInput.addEventListener('change', handleFileSelect);
         loadButton.addEventListener('click', () => fileInput.click());
+
+        async function loadCeramic() {
+            try {
+                const response = await fetch('../Audiofiles/Ceramic.m4a');
+                if (!response.ok) throw new Error("Could not fetch Ceramic.m4a");
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
+                await setupPlayerWithBuffer(audioBuffer, "CERAMIC");
+            } catch (err) {
+                console.error("Auto-load failed:", err);
+            }
+        }
+
+        async function setupPlayerWithBuffer(audioBuffer, name) {
+            if (grainPlayer) {
+                if (grainPlayer.state === 'started') {
+                    grainPlayer.volume.rampTo(-60, 0.005);
+                    setTimeout(() => grainPlayer.stop(), 10);
+                }
+                grainPlayer.disconnect();
+                grainPlayer.dispose();
+            }
+
+            grainPlayer = new Tone.Player({
+                url: audioBuffer,
+                loop: true,
+                playbackRate: 1,
+                volume: -60,
+                fadeIn: 0.05,
+                fadeOut: 0.05
+            });
+
+            await Tone.loaded();
+
+            grainPlayer.connect(filter);
+            grainPlayer.connect(reverb);
+            grainPlayer.connect(delay);
+            grainPlayer.connect(distortion);
+
+            shouldRestartFromBeginning = true;
+            isStarted = true;
+            sampleInfo.textContent = name.toUpperCase();
+        }
 
         async function handleFileSelect(e) {
             if (e.target.files.length > 0) {
@@ -452,7 +496,7 @@
             dryGain = new Tone.Gain(1.0).connect(masterGain);
 
             reverb = new Tone.Reverb({
-                decay: 15,  
+                decay: 15,
                 preDelay: 0.2,
                 wet: 1
             });
@@ -468,13 +512,13 @@
             });
 
             distortion = new Tone.Distortion({
-                distortion: 1.0,  
+                distortion: 1.0,
                 oversample: '4x',
                 wet: 0.7
             });
 
             bitcrusher = new Tone.BitCrusher({
-                bits: 2,  
+                bits: 2,
                 wet: 0.8
             });
 
@@ -493,7 +537,7 @@
 
             delay = new Tone.FeedbackDelay({
                 delayTime: 0.5,
-                feedback: 0.8,  
+                feedback: 0.8,
                 wet: 1
             });
             delayGain = new Tone.Gain(0).connect(masterGain);
@@ -502,7 +546,7 @@
             filter = new Tone.Filter({
                 frequency: 20000,
                 type: "lowpass",
-                rolloff: -48,  
+                rolloff: -48,
                 Q: 5
             });
             filter.connect(dryGain);
@@ -556,7 +600,7 @@
 
             distortGain.gain.rampTo(distortAmount * 6.0, 0.05);
 
-            distortion.distortion = 0.8 + (distortAmount * 1.2); 
+            distortion.distortion = 0.8 + (distortAmount * 1.2);
             distortion.wet = 0.5 + distortAmount * 0.5;
 
             bitcrusher.bits = Math.max(1, Math.floor(8 - distortAmount * 7));
@@ -564,7 +608,7 @@
 
             const filterFreq = 80 + (1 - weights.filter) * 10000;
             filter.frequency.rampTo(filterFreq, 0.05);
-            filter.Q.rampTo(2 + weights.filter * 20, 0.05); 
+            filter.Q.rampTo(2 + weights.filter * 20, 0.05);
 
             grainPlayer.playbackRate = Math.pow(2, (yN - 0.5) * 3);
             grainPlayer.detune = (xN - 0.5) * 2400;
@@ -609,39 +653,7 @@
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
-
-                if (grainPlayer) {
-                    if (grainPlayer.state === 'started') {
-                        grainPlayer.volume.rampTo(-60, 0.005);
-                        setTimeout(() => grainPlayer.stop(), 10);
-                    }
-                    grainPlayer.disconnect();
-                    grainPlayer.dispose();
-                }
-
-                grainPlayer = new Tone.Player({
-                    url: audioBuffer,
-                    loop: true,
-                    playbackRate: 1,
-                    volume: -60,
-                    fadeIn: 0.05,
-                    fadeOut: 0.05
-                });
-
-                await Tone.loaded();
-
-                const distortionInput = distortion;
-                grainPlayer.connect(filter);
-                grainPlayer.connect(reverb);
-                grainPlayer.connect(delay);
-                grainPlayer.connect(distortionInput);
-
-                shouldRestartFromBeginning = true;
-                isStarted = true;
-
-                const name = file.name.length > 24 ? file.name.substring(0, 21) + '...' : file.name;
-                sampleInfo.textContent = name.toUpperCase();
-
+                await setupPlayerWithBuffer(audioBuffer, file.name);
             } catch (error) {
                 console.error(error);
                 sampleInfo.textContent = 'ERROR: COULD NOT LOAD';
@@ -692,21 +704,129 @@
             style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
             onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
             onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
+        <button onclick="goToRandom()"
             style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
             onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
             onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
     </div>
     <script>
-        function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
-            let random = apps[Math.floor(Math.random() * apps.length)];
-            while (window.location.href.includes(random)) {
-                 random = apps[Math.floor(Math.random() * apps.length)];
-            }
-            window.location.href = '../' + random + '/';
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            while (next === 'hrinan') next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
         }
     </script>
+
+
+
+
+
+
+
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    console.log("MIDI NoteOn received:", data.note, "Vel:", data.velocity);
+
+                    const initVar = window.isInitialized ?? window.isAudioStarted ?? window.audioInitialized;
+                    if (initVar === false) {
+                        console.warn("App state suggests it is NOT initialized. MIDI might not produce sound.");
+                    }
+
+                    // Dynamic Note Range Detection
+                    const noteSets = [
+                        window.frequencies,
+                        window.TUNING,
+                        window.tubes,
+                        window.bars,
+                        window.bowls,
+                        window.strings,
+                        window.nodes,
+                        window.partchScale,
+                        window.partch43Ratios,
+                        window.RATIOS
+                    ];
+
+                    let numNotes = 43; // Standard Partch default
+                    for (const set of noteSets) {
+                        if (set && set.length) {
+                            numNotes = set.length;
+                            break;
+                        }
+                    }
+
+                    // Integer mapping (Whole notes only)
+                    const index = Math.floor(data.note % numNotes);
+                    const vel = data.velocity / 127;
+
+                    console.log("Mapped MIDI", data.note, "to Integer Index", index, "of", numNotes);
+
+                    // Strategy 1: Direct function calls
+                    const strikeFunc = window.strikeBar || window.pluckString || window.pluckKitharaString || window.strikeNode || window.triggerNote;
+                    if (strikeFunc) {
+                        console.log("Triggering via direct function:", strikeFunc.name);
+                        strikeFunc(index, vel);
+                        return;
+                    }
+
+                    // Strategy 2: Property-based Strike (Sceo, etc.)
+                    const objSets = [window.tubes, window.bars, window.bowls, window.nodes, window.strings];
+                    for (const set of objSets) {
+                        if (set && set[index]) {
+                            const item = set[index];
+                            if (item.strike || item.pluck || item.trigger) {
+                                const func = item.strike || item.pluck || item.trigger;
+                                console.log("Triggering item-style strike at index", index);
+                                func.call(item, vel, 0.5);
+                                return;
+                            }
+                        }
+                    }
+
+                    if (pad) {
+                        const rect = pad.getBoundingClientRect();
+                        const x = (data.note / 127) * rect.width;
+                        const y = (1 - (data.velocity / 127)) * rect.height;
+
+                        updateAudio(x, y);
+
+                        // Show touch indicator
+                        indicator.style.display = 'block';
+                        indicator.style.left = x + 'px';
+                        indicator.style.top = y + 'px';
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    stopAudio();
+                    indicator.style.display = 'none';
+                });
+
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        if (masterGain) {
+                            masterGain.gain.rampTo(data.value / 127, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

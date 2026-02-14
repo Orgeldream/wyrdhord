@@ -260,18 +260,20 @@
 
     <div id="start-overlay">
         <div class="start-msg">TAP TO INITIALISE</div><br>
-        <div class="mobile-hint">Record loops.<br> <br>Touch and move to control degradation.</div>
+        <div class="mobile-hint">Record loops.<br> <br>Touch X: degradation (clean → destroyed)<br>Touch Y: density (sparse → dense)</div>
     </div>
 
     <script>
+        // Gentle distortion curve – less aggressive
         function makeDistortionCurve(amount) {
-            const k = typeof amount === 'number' ? amount : 50;
+            // amount is expected 0-1, we'll map to a reasonable k
+            const k = amount * 150; // max 150 (was 400)
             const n_samples = 44100;
             const curve = new Float32Array(n_samples);
-            const deg = Math.PI / 180;
             for (let i = 0; i < n_samples; ++i) {
                 const x = i * 2 / n_samples - 1;
-                curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+                // Soft clipping / tanh approximation
+                curve[i] = Math.tanh(x * (1 + k * 0.5));
             }
             return curve;
         }
@@ -282,6 +284,7 @@
                 this.masterGain = null;
                 this.compressor = null;
                 this.analyser = null;
+                this.limiter = null; // Add a limiter for safety
 
                 this.mediaRecorder = null;
                 this.audioChunks = [];
@@ -292,27 +295,28 @@
                 this.loopFilters = [];
                 this.loopGrains = [];
                 this.loopPanners = [];
-                this.loopShapers = []; 
+                this.loopShapers = [];
 
                 this.loopCount = 0;
-                this.degradeAmount = 0;
-                this.gritAmount = 0;
+                this.degradeAmount = 0;      // X: degradation intensity
+                this.gritAmount = 0;          // Y: visual mapping (density)
+                this.currentFilterCutoff = 8000;
+                this.currentGrainDensity = 0.5;  // Y: grains per schedule
+                this.currentPlaybackRate = 1.0;  // Y: playback speed
                 this.panAmount = 0;
-                this.recordingLength = 8; 
+                this.recordingLength = 8;
 
                 this.inputGain = null;
                 this.recordingGain = null;
-                this.microphoneSource = null; 
-                this.recorder = null; 
+                this.microphoneSource = null;
+                this.recorder = null;
 
-                this.currentFilterCutoff = 8000;
-                this.currentGrainDensity = 1;
-                this.currentPlaybackRate = 1.0;
-
-                this.distortionCurve = makeDistortionCurve(400);
+                this.distortionCurve = makeDistortionCurve(0);
 
                 this.unlocked = false;
                 this._unlockHandler = this._unlockHandler.bind(this);
+
+                this.isInitialized = false; // Flag for MIDI
             }
 
             init() {
@@ -335,6 +339,7 @@
 
                 this.setupAudioGraph();
                 this.setupMicrophone();
+                this.isInitialized = true;
             }
 
             _unlockHandler(e) {
@@ -361,13 +366,22 @@
             }
 
             setupAudioGraph() {
+                // Master limiter to prevent clipping
+                this.limiter = this.ctx.createDynamicsCompressor();
+                this.limiter.threshold.value = -3;
+                this.limiter.knee.value = 0;
+                this.limiter.ratio.value = 20;
+                this.limiter.attack.value = 0.001;
+                this.limiter.release.value = 0.05;
+                this.limiter.connect(this.ctx.destination);
+
                 this.compressor = this.ctx.createDynamicsCompressor();
-                this.compressor.threshold.value = -24;
-                this.compressor.knee.value = 30;
-                this.compressor.ratio.value = 12;
+                this.compressor.threshold.value = -20;
+                this.compressor.knee.value = 20;
+                this.compressor.ratio.value = 8;
                 this.compressor.attack.value = 0.003;
-                this.compressor.release.value = 0.25;
-                this.compressor.connect(this.ctx.destination);
+                this.compressor.release.value = 0.2;
+                this.compressor.connect(this.limiter);
 
                 this.masterGain = this.ctx.createGain();
                 this.masterGain.gain.value = 0.7;
@@ -422,7 +436,7 @@
                     const outputData = event.outputBuffer.getChannelData(0);
 
                     for (let i = 0; i < inputData.length; i++) {
-                        outputData[i] = 0; 
+                        outputData[i] = 0;
                     }
 
                     const copy = new Float32Array(inputData.length);
@@ -504,7 +518,7 @@
 
                 const panner = this.ctx.createStereoPanner();
 
-                const panPosition = (Math.random() * 2) - 1; 
+                const panPosition = (Math.random() * 2) - 1;
                 panner.pan.value = panPosition;
 
                 const shaper = this.ctx.createWaveShaper();
@@ -521,7 +535,7 @@
                 this.loopGains.push(gainNode);
                 this.loopFilters.push(filter);
                 this.loopPanners.push(panner);
-                this.loopShapers.push(shaper); 
+                this.loopShapers.push(shaper);
 
                 const granularProcessor = {
                     node: this.ctx.createGain(),
@@ -535,7 +549,7 @@
                     gain: gainNode
                 };
                 granularProcessor.node.gain.value = 1.0;
-                granularProcessor.node.connect(this.masterGain); 
+                granularProcessor.node.connect(this.masterGain);
                 this.loopGrains.push(granularProcessor);
 
                 source.start();
@@ -593,14 +607,16 @@
 
                 const now = this.ctx.currentTime;
 
-                const grainCount = 1 + Math.floor(this.gritAmount * this.currentGrainDensity * 3);
+                // Number of grains based on density (Y) – max 4 to avoid overload
+                const grainCount = 1 + Math.floor(this.currentGrainDensity * 3); // 1–4 grains
 
                 for (let i = 0; i < grainCount; i++) {
                     const grainDelay = i * 0.02;
                     this.playGranularGrain(loopIndex, now + grainDelay);
                 }
 
-                const nextGrainTime = 0.1 - (this.gritAmount * 0.08);
+                // Interval between grain bursts
+                const nextGrainTime = 0.3 - (this.currentGrainDensity * 0.1); // 0.3s → 0.2s
                 granularProcessor.grainTimer = setTimeout(() => {
                     this.scheduleGranularGrains(loopIndex);
                 }, nextGrainTime * 1000);
@@ -610,7 +626,8 @@
                 const granularProcessor = this.loopGrains[loopIndex];
                 if (!granularProcessor) return;
 
-                if (Math.random() < this.degradeAmount * 0.7) return;
+                // Skip grains based on degradation (X) – less aggressive skipping
+                if (Math.random() < this.degradeAmount * 0.5) return; // was 0.8
 
                 const buffer = granularProcessor.buffer;
                 const ctx = this.ctx;
@@ -618,19 +635,20 @@
                 const grainSource = ctx.createBufferSource();
                 grainSource.buffer = buffer;
 
-                let grainSize = 0.03 + (Math.random() * 0.07 * (1 - this.gritAmount));
-                if (this.degradeAmount > 0.5) {
-                    grainSize *= (1.5 - this.degradeAmount);
-                }
+                // Grain size – ensure not too tiny to avoid clicks
+                let grainSize = 0.05 + (Math.random() * 0.15 * (1 - this.degradeAmount * 0.5));
+                grainSize = Math.max(0.03, grainSize); // min 30ms
 
                 const maxStart = Math.max(0, buffer.duration - grainSize);
                 const startPos = Math.random() * maxStart;
 
-                const wobble = (Math.random() - 0.5) * 2400 * this.degradeAmount;
+                // Detune wobble – less extreme
+                const wobble = (Math.random() - 0.5) * 1200 * this.degradeAmount; // max 1200 cents
                 grainSource.detune.value = wobble;
 
-                const playbackRate = 0.7 + (Math.random() * 0.6);
-                grainSource.playbackRate.value = playbackRate * this.currentPlaybackRate;
+                // Playback rate – moderate range
+                const randomRate = 0.7 + (Math.random() * 0.6);
+                grainSource.playbackRate.value = randomRate * this.currentPlaybackRate;
 
                 const grainGain = ctx.createGain();
 
@@ -638,25 +656,26 @@
                 const releaseTime = 0.01;
 
                 grainGain.gain.setValueAtTime(0, startTime);
-                grainGain.gain.linearRampToValueAtTime(0.7, startTime + attackTime);
-                grainGain.gain.setValueAtTime(0.7, startTime + grainSize - releaseTime);
+                grainGain.gain.linearRampToValueAtTime(0.5, startTime + attackTime); // reduced amplitude
+                grainGain.gain.setValueAtTime(0.5, startTime + grainSize - releaseTime);
                 grainGain.gain.linearRampToValueAtTime(0, startTime + grainSize);
 
                 const grainFilter = ctx.createBiquadFilter();
                 grainFilter.type = 'lowpass';
-                const degradedCutoff = Math.max(100, this.currentFilterCutoff * (1 - this.degradeAmount * 0.8));
-                grainFilter.frequency.value = degradedCutoff;
+                const degradedCutoff = this.currentFilterCutoff * (1 - this.degradeAmount * 0.6); // less steep
+                grainFilter.frequency.value = Math.max(100, degradedCutoff);
 
                 let outputNode = grainFilter;
                 let shaper = null;
 
-                if (this.degradeAmount > 0.3) {
+                // Apply distortion only at higher degradation, with lower intensity
+                if (this.degradeAmount > 0.4) {
                     shaper = ctx.createWaveShaper();
                     shaper.curve = this.distortionCurve;
                     shaper.oversample = '2x';
 
                     const distGain = ctx.createGain();
-                    distGain.gain.value = 1.0 - (this.degradeAmount * 0.5);
+                    distGain.gain.value = 0.7; // fixed lower gain
 
                     grainFilter.connect(shaper);
                     shaper.connect(distGain);
@@ -664,12 +683,10 @@
                 }
 
                 grainSource.connect(grainFilter);
-
                 outputNode.connect(grainGain);
                 grainGain.connect(granularProcessor.node);
 
                 grainSource.start(startTime, startPos, grainSize);
-
                 grainSource.stop(startTime + grainSize);
                 grainSource.onended = () => {
                     grainSource.disconnect();
@@ -714,31 +731,43 @@
                 console.log("All loops cleared");
             }
 
+            // TAMED XY MAPPING: still dramatic but safe
             updateParams(x, y) {
-                this.gritAmount = x;
-                this.currentFilterCutoff = 500 + (x * 7500);
+                // X: degradation intensity (0 = clean, 1 = destroyed) + moderate pitch shift
+                this.degradeAmount = x;
 
-                this.degradeAmount = 1.0 - y;
+                // Y: density (0 = sparse, 1 = dense) + filter cutoff
+                this.gritAmount = y;
 
-                this.currentGrainDensity = 0.1 + (y * 2.9);
-                this.currentPlaybackRate = 0.2 + (y * 1.0);
+                // Pitch shift (playback rate) – from 0.7 to 1.8 (was 0.5–2.0)
+                const playbackRate = 0.7 + x * 1.1; // 0.7 to 1.8
+                this.currentPlaybackRate = playbackRate;
 
+                // Filter cutoff: from bright (10000 Hz) to dark (150 Hz)
+                this.currentFilterCutoff = 10000 - x * 9850; // 10000 → 150
+                if (this.currentFilterCutoff < 150) this.currentFilterCutoff = 150;
+
+                // Distortion curve intensity – gentler
+                const distortionK = x * 150; // max 150 (was 400)
+                this.distortionCurve = makeDistortionCurve(distortionK);
+
+                // Density parameters: grain density
+                this.currentGrainDensity = 0.5 + y * 3.5; // 0.5 → 4.0 grains per burst
+
+                // Update existing loops with new filter and distortion settings
                 for (let i = 0; i < this.loopFilters.length; i++) {
                     if (this.loopFilters[i]) {
-                        const baseCutoff = this.currentFilterCutoff;
-                        const degradedCutoff = Math.max(100, baseCutoff * (1 - this.degradeAmount * 0.9));
-                        this.loopFilters[i].frequency.setTargetAtTime(degradedCutoff, this.ctx.currentTime, 0.1);
+                        this.loopFilters[i].frequency.setTargetAtTime(this.currentFilterCutoff, this.ctx.currentTime, 0.1);
                     }
                     if (this.loopShapers[i]) {
-                        const k = this.degradeAmount * 50;
-                        this.loopShapers[i].curve = makeDistortionCurve(k);
+                        this.loopShapers[i].curve = this.distortionCurve;
                     }
                 }
 
+                // Update UI
                 document.getElementById('val-loops').textContent = this.loopCount;
                 document.getElementById('val-degrade').textContent = Math.floor(this.degradeAmount * 100) + '%';
                 document.getElementById('val-grit').textContent = Math.floor(this.gritAmount * 100) + '%';
-
                 let panText = "CENTER";
                 if (x < 0.3) panText = "LEFT";
                 else if (x > 0.7) panText = "RIGHT";
@@ -930,12 +959,12 @@
                     this.audio.analyser.getByteTimeDomainData(timeData);
                 }
 
-                const grit = this.audio.gritAmount;
+                const grit = this.audio.gritAmount;        // Y (density) for visuals
                 const loopCount = this.audio.loopCount;
                 const filterCutoff = this.audio.currentFilterCutoff;
-                const grainDensity = this.audio.currentGrainDensity;
+                const grainDensity = this.audio.currentGrainDensity;  // Y
 
-                const lineWidth = 1 + grit * 3;
+                const lineWidth = 1 + grit * 5;
                 const brightness = 0.5 + (grit * 0.5);
                 const gridDensity = 0.5 + (grainDensity * 0.5);
 
@@ -999,11 +1028,11 @@
                 if (this.isTouching) {
                     const centerX = this.touchX * w;
                     const centerY = this.touchY * h;
-                    const rippleSize = 50 + (grit * 100);
+                    const rippleSize = 50 + (grit * 150);
 
                     ctx.beginPath();
                     ctx.arc(centerX, centerY, rippleSize, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + grit * 0.2})`;
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + grit * 0.3})`;
                     ctx.lineWidth = 2;
                     ctx.stroke();
                 }
@@ -1018,21 +1047,85 @@
             style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
             onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
             onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
+        <button onclick="goToRandom()"
             style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
             onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
             onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
     </div>
     <script>
-        function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
-            let random = apps[Math.floor(Math.random() * apps.length)];
-            while (window.location.href.includes(random)) {
-                 random = apps[Math.floor(Math.random() * apps.length)];
-            }
-            window.location.href = '../' + random + '/';
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            while (next === 'mynd') next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
         }
     </script>
+
+    <!-- MIDI Integration – FIXED: no auto‑click, check isInitialized -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    // Only respond if audio is already initialised by user
+                    if (!app || !app.audio || !app.audio.isInitialized) return;
+
+                    // Special Controls
+                    if (data.note === 38) { // D1 -> Clear Loops
+                        document.getElementById('clear-btn').click();
+                        return;
+                    }
+
+                    // Pitch -> Degradation (X), Velocity -> Density (Y)
+                    const x = data.note / 127;
+                    const y = data.velocity / 127;
+
+                    app.touchX = x;
+                    app.touchY = y;
+                    app.isTouching = true;
+                    app.audio.updateParams(x, y);
+
+                    // Visual feedback
+                    const indicator = document.getElementById('touch-indicator');
+                    if (indicator) {
+                        indicator.style.display = 'block';
+                        indicator.style.left = (x * window.innerWidth) + 'px';
+                        indicator.style.top = (y * window.innerHeight) + 'px';
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    if (data.note < 48) return; // Ignore control note offs
+
+                    if (app) {
+                        app.isTouching = false;
+                        const indicator = document.getElementById('touch-indicator');
+                        if (indicator) indicator.style.display = 'none';
+                    }
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (!app || !app.audio || !app.audio.isInitialized) return;
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        if (app.audio.masterGain) {
+                            app.audio.masterGain.gain.setTargetAtTime(data.value / 127, app.audio.ctx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

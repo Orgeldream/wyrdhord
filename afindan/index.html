@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Harmonic Maze</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030303;
+            --accent: #d0d0d0;
+            --node-glow: rgba(255, 255, 255, 0.05);
+            --path-color: rgba(255, 255, 255, 0.03);
+            --wanderer-color: rgba(255, 255, 255, 0.8);
+            --font-main: 'Outfit', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--accent);
+            font-family: var(--font-main);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px;
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+
+        .ui-layer.hidden {
+            opacity: 0;
+        }
+
+        .header {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .title-block {
+            pointer-events: auto;
+            text-align: left;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .title-text {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle-text {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            pointer-events: auto;
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+            padding: 6px 14px;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover,
+        .btn.active {
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 1.5s ease;
+        }
+
+        .start-text {
+            font-size: 20px;
+            font-weight: 200;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+
+        #nav-buttons {
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        #persistent-nav {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="start-overlay" onclick="start()">
+        <div class="start-text">Harmonic Maze</div>
+        <div style="font-size: 9px; letter-spacing: 3px; opacity: 0.4;">CLICK TO BEGIN</div>
+    </div>
+
+    <div class="ui-layer" id="ui-layer">
+    </div>
+
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
+
+    <button id="toggle-ui"
+        style="position: fixed; top: 24px; right: 24px; background:none; border:none; color:#fff; opacity:0; cursor:pointer; font-size:10px; letter-spacing:1px; text-transform:uppercase; pointer-events: auto; z-index: 1000; transition: opacity 0.3s;">Hide</button>
+
+    <div class="header" style="opacity: 0; transition: opacity 0.3s;">
+        <div class="title-block">
+            <div class="title-text">AFINDAN</div>
+            <div class="subtitle-text">HARMONIC MAZE SYNTHESISER</div>
+        </div>
+    </div>
+
+    <div class="controls" style="opacity: 0; transition: opacity 0.3s;">
+        <button id="auto-btn" class="btn" onclick="toggleAuto()">Autonomous</button>
+    </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const RATIOS = [
+            { n: 1, d: 1, label: "1/1" },
+            { n: 81, d: 80, label: "81/80" }, { n: 33, d: 32, label: "33/32" }, { n: 21, d: 20, label: "21/20" },
+            { n: 16, d: 15, label: "16/15" }, { n: 12, d: 11, label: "12/11" }, { n: 11, d: 10, label: "11/10" },
+            { n: 10, d: 9, label: "10/9" }, { n: 9, d: 8, label: "9/8" }, { n: 8, d: 7, label: "8/7" },
+            { n: 7, d: 6, label: "7/6" }, { n: 32, d: 27, label: "32/27" }, { n: 6, d: 5, label: "6/5" },
+            { n: 11, d: 9, label: "11/9" }, { n: 5, d: 4, label: "5/4" }, { n: 14, d: 11, label: "14/11" },
+            { n: 9, d: 7, label: "9/7" }, { n: 21, d: 16, label: "21/16" }, { n: 4, d: 3, label: "4/3" },
+            { n: 27, d: 20, label: "27/20" }, { n: 11, d: 8, label: "11/8" }, { n: 7, d: 5, label: "7/5" },
+            { n: 10, d: 7, label: "10/7" }, { n: 16, d: 11, label: "16/11" }, { n: 40, d: 27, label: "40/27" },
+            { n: 3, d: 2, label: "3/2" }, { n: 32, d: 21, label: "32/21" }, { n: 14, d: 9, label: "14/9" },
+            { n: 11, d: 7, label: "11/7" }, { n: 8, d: 5, label: "8/5" }, { n: 18, d: 11, label: "18/11" },
+            { n: 5, d: 3, label: "5/3" }, { n: 27, d: 16, label: "27/16" }, { n: 12, d: 7, label: "12/7" },
+            { n: 7, d: 4, label: "7/4" }, { n: 16, d: 9, label: "16/9" }, { n: 9, d: 5, label: "9/5" },
+            { n: 20, d: 11, label: "20/11" }, { n: 11, d: 6, label: "11/6" }, { n: 15, d: 8, label: "15/8" },
+            { n: 40, d: 21, label: "40/21" }, { n: 64, d: 33, label: "64/33" }, { n: 160, d: 81, label: "160/81" },
+            { n: 2, d: 1, label: "2/1" }
+        ];
+
+        const BASE_FREQ = 110;
+        let audioCtx, masterGain, limiter;
+        let canvas, ctx, width, height;
+        let nodes = [];
+        let paths = [];
+        let wanderer = {
+            x: 0, y: 0,
+            targetX: 0, targetY: 0,
+            vx: 0, vy: 0,
+            speed: 0, lastX: 0, lastY: 0,
+            lurchTimer: 0
+        };
+        let isStarted = false; window.isStarted = false;
+        let autoMode = false; window.autoMode = false;
+        let autoTimer = 0;
+        let audioInitialized = false;
+        let midiTouch = { x: 0, y: 0, active: false, intensity: 0 };
+        window.midiTouch = midiTouch;
+        window.wanderer = wanderer;
+
+        class Node {
+            constructor(x, y, ratioInfo) {
+                this.x = x;
+                this.y = y;
+                this.ratio = ratioInfo.n / ratioInfo.d;
+
+                // Add octave variety
+                const octs = [0.5, 1, 2, 4];
+                this.octave = octs[Math.floor(Math.random() * octs.length)];
+
+                this.label = ratioInfo.label;
+                this.freq = BASE_FREQ * this.ratio * this.octave;
+
+                this.intensity = 0;
+                this.targetIntensity = 0;
+                this.labelAlpha = 0;
+
+                this.phase = Math.random() * Math.PI * 2;
+                this.osc = null;
+                this.gain = null;
+                this.tremolo = null;
+                this.tremDepth = null;
+                this.active = false;
+            }
+
+            initAudio() {
+                if (this.active) return;
+
+                this.osc = audioCtx.createOscillator();
+                this.gain = audioCtx.createGain();
+                this.tremolo = audioCtx.createOscillator();
+                this.tremDepth = audioCtx.createGain();
+
+                this.osc.type = 'sine';
+                this.osc.frequency.value = this.freq;
+
+                this.tremolo.frequency.value = 5 + Math.random() * 10;
+                this.tremDepth.gain.value = 0;
+
+                this.tremolo.connect(this.tremDepth);
+                this.tremDepth.connect(this.gain.gain);
+
+                this.osc.connect(this.gain);
+                this.gain.gain.value = 0;
+                this.gain.connect(limiter);
+
+                this.osc.start();
+                this.tremolo.start();
+                this.active = true;
+            }
+
+            stopAudio() {
+                if (!this.active) return;
+
+                try {
+                    this.gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                    setTimeout(() => {
+                        if (this.osc) {
+                            this.osc.stop();
+                            this.tremolo.stop();
+                            this.osc = null;
+                            this.gain = null;
+                            this.tremolo = null;
+                            this.tremDepth = null;
+                            this.active = false;
+                        }
+                    }, 100);
+                } catch (e) {
+                    console.log("Error stopping audio:", e);
+                }
+            }
+
+            update(wanderer, speed) {
+                if (!audioInitialized) return;
+
+                const dist = Math.hypot(this.x - wanderer.x, this.y - wanderer.y);
+                const maxRange = 300;
+                this.targetIntensity = Math.max(0, 1 - dist / maxRange);
+                this.intensity += (this.targetIntensity - this.intensity) * 0.1;
+
+                if (this.intensity > 0.01) {
+                    if (!this.active) {
+                        this.initAudio();
+                    }
+                    if (this.labelAlpha < 1 && this.targetIntensity > 0.7) this.labelAlpha += 0.05;
+                    else this.labelAlpha *= 0.98;
+
+                    const tremAmount = Math.min(0.5, speed * 0.05);
+                    if (this.tremDepth) {
+                        this.tremDepth.gain.setTargetAtTime(tremAmount * this.intensity, audioCtx.currentTime, 0.1);
+                        this.gain.gain.setTargetAtTime(Math.pow(this.intensity, 2) * 0.2, audioCtx.currentTime, 0.1);
+                    }
+                } else if (this.active && this.intensity < 0.001) {
+                    this.stopAudio();
+                }
+            }
+
+            draw(ctx) {
+                const alpha = this.intensity * 0.3;
+                if (alpha < 0.01) return;
+
+                // Node Glow
+                const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 100 * this.intensity);
+                grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 100 * this.intensity, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Core Dot
+                ctx.fillStyle = `rgba(255,255,255,${this.intensity * 0.8})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Label
+                if (this.labelAlpha > 0.01) {
+                    ctx.fillStyle = `rgba(255,255,255,${this.labelAlpha * 0.5})`;
+                    ctx.font = '10px Outfit';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.label, this.x, this.y - 15);
+                }
+            }
+        }
+
+        function init() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            resize();
+            window.addEventListener('resize', resize);
+
+            // Generate Maze Nodes - 43 Unique Nodes filling the screen
+            const nodeCount = RATIOS.length;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Aspect-aware scale to fill the screen with padding
+            const padding = 100;
+            const scaleX = (width - padding * 2) / 2;
+            const scaleY = (height - padding * 2) / 2;
+
+            // Vogel Spiral / Phyllotaxis for organic distribution
+            const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+            for (let i = 0; i < nodeCount; i++) {
+                nodes.push(new Node(0, 0, RATIOS[i]));
+            }
+
+            updateNodePositions();
+
+            updatePaths();
+
+            wanderer.x = width / 2;
+
+            wanderer.x = width / 2;
+            wanderer.y = height / 2;
+            wanderer.targetX = width / 2;
+            wanderer.targetY = height / 2;
+
+            setupInteraction();
+            animate();
+        }
+
+        function setupInteraction() {
+            const updateTarget = (e) => {
+                if (!isStarted) return;
+                const x = e.touches ? e.touches[0].clientX : e.clientX;
+                const y = e.touches ? e.touches[0].clientY : e.clientY;
+                wanderer.targetX = x;
+                wanderer.targetY = y;
+                autoMode = false;
+                document.getElementById('auto-btn').classList.remove('active');
+            };
+
+            window.addEventListener('mousemove', updateTarget);
+            window.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                updateTarget(e);
+            }, { passive: false });
+        }
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            if (nodes.length > 0) {
+                updateNodePositions();
+                updatePaths();
+            }
+        }
+
+        function updateNodePositions() {
+            const nodeCount = nodes.length;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const padding = 100;
+            const scaleX = (width - padding * 2) / 2;
+            const scaleY = (height - padding * 2) / 2;
+            const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+            nodes.forEach((node, i) => {
+                const d = Math.sqrt(i / (nodeCount - 1));
+                const theta = i * goldenAngle;
+                node.x = centerX + Math.cos(theta) * d * scaleX;
+                node.y = centerY + Math.sin(theta) * d * scaleY;
+            });
+        }
+
+        function updatePaths() {
+            paths = [];
+            const nodeCount = nodes.length;
+            nodes.forEach((n1, i) => {
+                nodes.forEach((n2, j) => {
+                    if (i >= j) return;
+                    const d = Math.hypot(n1.x - n2.x, n1.y - n2.y);
+                    const maxDist = Math.sqrt((width * height) / nodeCount) * 1.5;
+                    if (d < maxDist) {
+                        paths.push({ from: n1, to: n2 });
+                    }
+                });
+            });
+        }
+
+        async function start() {
+            if (isStarted) return;
+
+            try {
+                // Initialize audio context on user gesture
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                // Create audio chain
+                limiter = audioCtx.createDynamicsCompressor();
+                limiter.threshold.value = -10;
+                limiter.ratio.value = 12;
+                limiter.connect(audioCtx.destination);
+
+                // Resume audio context (required for Chrome autoplay policy)
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+
+                audioInitialized = true;
+                isStarted = true;
+                window.isStarted = true;
+
+                // Fade out overlay
+                document.getElementById('start-overlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('start-overlay').style.display = 'none';
+                }, 1500);
+
+                // Show UI elements after initialization
+                setTimeout(() => {
+                    document.querySelector('.header').style.opacity = 1;
+                    document.querySelector('.controls').style.opacity = 1;
+                    document.getElementById('toggle-ui').style.opacity = 0.3;
+                }, 500);
+
+                console.log("Audio started successfully");
+            } catch (error) {
+                console.error("Error starting audio:", error);
+                alert("Could not initialize audio. Please ensure your browser allows audio playback.");
+            }
+        }
+
+        function toggleAuto() {
+            autoMode = !autoMode;
+            window.autoMode = autoMode;
+            document.getElementById('auto-btn').classList.toggle('active', autoMode);
+            if (autoMode) {
+                autoTimer = 0;
+            } else {
+                // Reset wanderer target to current position
+                wanderer.targetX = wanderer.x;
+                wanderer.targetY = wanderer.y;
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = '#030303';
+            ctx.fillRect(0, 0, width, height);
+
+            wanderer.lastX = wanderer.x;
+            wanderer.lastY = wanderer.y;
+
+            if (autoMode) {
+                // Drunk/Lurching logic
+                autoTimer--;
+                if (autoTimer <= 0) {
+                    const node = nodes[Math.floor(Math.random() * nodes.length)];
+                    wanderer.targetX = node.x + (Math.random() - 0.5) * 100;
+                    wanderer.targetY = node.y + (Math.random() - 0.5) * 100;
+                    autoTimer = 50 + Math.random() * 150;
+                }
+
+                wanderer.lurchTimer--;
+                if (wanderer.lurchTimer <= 0) {
+                    // Sudden lurch impulse
+                    const angle = Math.random() * Math.PI * 2;
+                    const force = 5 + Math.random() * 10;
+                    wanderer.vx += Math.cos(angle) * force;
+                    wanderer.vy += Math.sin(angle) * force;
+                    wanderer.lurchTimer = 30 + Math.random() * 100;
+                }
+
+                // Steering towards target
+                let ax = (wanderer.targetX - wanderer.x) * 0.005;
+                let ay = (wanderer.targetY - wanderer.y) * 0.005;
+
+                if (midiTouch.active) {
+                    ax += (midiTouch.x - wanderer.x) * 0.01;
+                    ay += (midiTouch.y - wanderer.y) * 0.01;
+                }
+
+                // Drunk noise force
+                const noiseX = (Math.random() - 0.5) * 0.5;
+                const noiseY = (Math.random() - 0.5) * 0.5;
+
+                wanderer.vx += ax + noiseX;
+                wanderer.vy += ay + noiseY;
+
+                // Friction
+                wanderer.vx *= 0.95;
+                wanderer.vy *= 0.95;
+
+                wanderer.x += wanderer.vx;
+                wanderer.y += wanderer.vy;
+            } else {
+                // Manual movement
+                wanderer.x += (wanderer.targetX - wanderer.x) * 0.05;
+                wanderer.y += (wanderer.targetY - wanderer.y) * 0.05;
+                wanderer.vx = 0;
+                wanderer.vy = 0;
+            }
+
+            wanderer.speed = Math.hypot(wanderer.x - wanderer.lastX, wanderer.y - wanderer.lastY);
+
+            // Draw Paths
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+            ctx.lineWidth = 0.5;
+            paths.forEach(p => {
+                ctx.beginPath();
+                ctx.moveTo(p.from.x, p.from.y);
+                ctx.lineTo(p.to.x, p.to.y);
+                ctx.stroke();
+            });
+
+            // Update & Draw Nodes
+            nodes.forEach(n => {
+                n.update(wanderer, wanderer.speed);
+                n.draw(ctx);
+            });
+
+            // Draw Wanderer
+            if (isStarted) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(wanderer.x, wanderer.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (midiTouch.active) {
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${midiTouch.intensity})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(midiTouch.x, midiTouch.y, 10 + (1 - midiTouch.intensity) * 20, 0, Math.PI * 2);
+                    ctx.stroke();
+                    midiTouch.intensity *= 0.95;
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        document.getElementById('toggle-ui').onclick = () => {
+            const header = document.querySelector('.header');
+            const controls = document.querySelector('.controls');
+            const toggleBtn = document.getElementById('toggle-ui');
+
+            const isHidden = header.style.opacity === '0';
+
+            if (isHidden) {
+                header.style.opacity = '1';
+                controls.style.opacity = '1';
+                toggleBtn.innerText = 'Hide';
+            } else {
+                header.style.opacity = '0';
+                controls.style.opacity = '0';
+                toggleBtn.innerText = 'Show';
+            }
+        };
+
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+
+
+
+
+
+
+
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!isStarted) return; // Global rule: check for manual init
+
+                    const canvas = document.getElementById('canvas');
+                    const rect = canvas.getBoundingClientRect();
+
+                    // MIDI XY Mapping: X = Pitch, Y = Velocity
+                    const midiX = (data.note / 127) * rect.width;
+                    const midiY = (1 - (data.velocity / 127)) * rect.height;
+
+                    window.midiTouch = { x: midiX, y: midiY, active: true, intensity: 1.0 };
+
+                    // Update wanderer target
+                    window.wanderer.targetX = midiX;
+                    window.wanderer.targetY = midiY;
+                    window.autoMode = false;
+                    const autoBtn = document.getElementById('auto-btn');
+                    if (autoBtn) autoBtn.classList.remove('active');
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    if (window.midiTouch) window.midiTouch.active = false;
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const master = window.masterGain;
+                        if (master && master.gain && master.gain.setTargetAtTime) {
+                            master.gain.setTargetAtTime(data.value / 127, 0, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
+</body>
+
+</html>

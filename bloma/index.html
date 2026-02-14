@@ -183,6 +183,41 @@
             }
         }
 
+        #persistent-nav {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
         .delay-controls {
             position: absolute;
             bottom: 20px;
@@ -200,13 +235,6 @@
             padding: 10px 20px;
             border-radius: 8px;
             border: 1px solid #333;
-        }
-
-        .slider-group {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
         }
 
         .slider-label {
@@ -250,7 +278,7 @@
             background: #555;
         }
 
-        
+
         @media (max-width: 768px) {
             .ui-layer {
                 padding: 12px;
@@ -277,6 +305,11 @@
 
 <body>
     <canvas id="canvas"></canvas>
+
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
 
     <div class="ui-layer">
         <div class="header">
@@ -348,7 +381,8 @@
                 this.index = 0;
                 this.activity = 0;
                 this.mix = 0;
-                this.isPlaying = false;
+                this.isPlaying = false; // "Active touch" flag
+                this.isInitialized = false; // "Audio ready" flag
 
                 this.unlocked = false;
                 this._unlockHandler = this._unlockHandler.bind(this);
@@ -384,6 +418,7 @@
                 });
 
                 this.setupGraph();
+                this.isInitialized = true; // Audio graph exists, context may be suspended
             }
 
             _unlockHandler(e) {
@@ -452,7 +487,7 @@
                 this.analyser = this.ctx.createAnalyser();
                 this.analyser.fftSize = 2048;
                 this.compressor.connect(this.analyser);
-                this.analyser.connect(this.ctx.destination); 
+                this.analyser.connect(this.ctx.destination);
 
                 this.updateDelaySettings();
 
@@ -467,7 +502,7 @@
                 this.masterDelay.delayTime.setTargetAtTime(delayTime, now, 0.1);
 
                 const wet = this.delayMixAmount / 100;
-                const dry = 1 - (wet * 0.5); 
+                const dry = 1 - (wet * 0.5);
 
                 this.delayDry.gain.setTargetAtTime(dry, now, 0.1);
                 this.delayWet.gain.setTargetAtTime(wet, now, 0.1);
@@ -500,7 +535,7 @@
                     this.modulator.connect(this.fmFeedbackGain);
                     this.fmFeedbackGain.connect(this.modulator.frequency);
                     this.carrier.connect(this.fmGain);
-                    this.fmGain.connect(this.chopperGain); 
+                    this.fmGain.connect(this.chopperGain);
 
                     this.carrier.start();
                     this.modulator.start();
@@ -538,7 +573,7 @@
                     this.ksDelay.connect(this.ksFeedbackGain);
                     this.ksFeedbackGain.connect(this.ksLowpass);
                     this.ksDelay.connect(this.ksOutputGain);
-                    this.ksOutputGain.connect(this.chopperGain); 
+                    this.ksOutputGain.connect(this.chopperGain);
                 } catch (e) {
                     console.error("Audio Graph Setup Failed:", e);
                 }
@@ -572,6 +607,7 @@
                 }
 
                 this.isPlaying = true;
+                this.isInitialized = true;
                 this.activity = 0;
             }
 
@@ -644,7 +680,7 @@
 
                 if (now >= this.nextRhythmTime) {
                     if (this.chopperGain) {
-                        const gateLen = delay * 0.5; 
+                        const gateLen = delay * 0.5;
                         this.chopperGain.gain.cancelScheduledValues(now);
                         this.chopperGain.gain.setValueAtTime(0, now);
                         this.chopperGain.gain.linearRampToValueAtTime(1, now + 0.005);
@@ -654,7 +690,7 @@
 
                     if (this.ksExciterGain) {
                         this.ksExciterGain.gain.cancelScheduledValues(now);
-                        this.ksExciterGain.gain.setValueAtTime(0.8, now); 
+                        this.ksExciterGain.gain.setValueAtTime(0.8, now);
                         this.ksExciterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
                     }
 
@@ -717,7 +753,7 @@
                     this.ksLowpass.frequency.setTargetAtTime(targetCutoff, now, 0.05);
 
                     if (x > 0.5) {
-                        const xProgress = (x - 0.5) / 0.5; 
+                        const xProgress = (x - 0.5) / 0.5;
 
                         const N = 64 - (56 * xProgress);
 
@@ -741,9 +777,34 @@
                     }
                 }
             }
+
+            triggerMIDIImpulse(x, y, velocity) {
+                if (!this.ctx) return;
+                if (this.ctx.state !== 'running') {
+                    this.ctx.resume();
+                }
+                const now = this.ctx.currentTime;
+
+                // Update parameters based on MIDI note
+                this.update(x, y, 0.5);
+
+                // Brief impulse - increased duration for more substantial sound
+                if (this.masterGain) {
+                    this.masterGain.gain.cancelScheduledValues(now);
+                    this.masterGain.gain.setValueAtTime(0, now);
+                    this.masterGain.gain.linearRampToValueAtTime(velocity * 0.8, now + 0.005);
+                    this.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4); // Extended MIDI impulse length
+                }
+
+                if (this.ksExciterGain) {
+                    this.ksExciterGain.gain.cancelScheduledValues(now);
+                    this.ksExciterGain.gain.setValueAtTime(velocity, now);
+                    this.ksExciterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4); // Extended MIDI impulse length
+                }
+            }
         }
 
-        const app = {
+        const app = window.app = {
             audio: new AudioEngine(),
             canvas: document.getElementById('canvas'),
             ctx: document.getElementById('canvas').getContext('2d'),
@@ -1057,27 +1118,82 @@
 
         window.onload = () => app.init();
     </script>
-    <div id="nav-buttons"
-        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
-        <button onclick="window.location.href='../index.html'"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
-    </div>
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
     <script>
-        function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
-            let random = apps[Math.floor(Math.random() * apps.length)];
-            while (window.location.href.includes(random)) {
-                 random = apps[Math.floor(Math.random() * apps.length)];
-            }
-            window.location.href = '../' + random + '/';
-        }
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', async (data) => {
+                    const audio = window.app?.audio;
+                    // Only respond if audio is already initialised by user (overlay clicked)
+                    if (!audio || !audio.isInitialized) return;
+
+                    const x = (data.note / 127);
+                    const y = (1 - (data.velocity / 127));
+                    const vel = data.velocity / 127;
+
+                    // Trigger short impulse
+                    audio.triggerMIDIImpulse(x, y, vel);
+
+                    // Visual feedback
+                    window.app.mouseX = x * window.app.width;
+                    window.app.mouseY = y * window.app.height;
+                });
+
+                // Clock Sync
+                let lastClockBeat = 0;
+                let clockStartTime = 0;
+                window.MIDIHandler.on('beat', (data) => {
+                    const audio = window.app?.audio;
+                    if (!audio || !audio.isInitialized) return;
+
+                    const now = performance.now();
+                    if (clockStartTime > 0) {
+                        const duration = (now - clockStartTime) / data.beat;
+                        const bpm = Math.round(60000 / duration);
+                        if (bpm >= 30 && bpm <= 300) {
+                            audio.delayBpm = bpm;
+                            const bpmSlider = document.getElementById('bpm-slider');
+                            const bpmVal = document.getElementById('bpm-val');
+                            if (bpmSlider) bpmSlider.value = bpm;
+                            if (bpmVal) bpmVal.innerText = bpm;
+                            audio.updateDelaySettings();
+                        }
+                    } else {
+                        clockStartTime = now;
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    // No specific noteoff handling for this drone
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    const audio = window.app?.audio;
+                    if (!audio || !audio.isInitialized) return;
+
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const masterG = audio.masterGain;
+                        if (masterG) {
+                            masterG.gain.setTargetAtTime(data.value / 127, audio.ctx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
     </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

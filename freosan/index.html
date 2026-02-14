@@ -56,14 +56,20 @@
         }
 
         .title-block {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            transform: none;
             text-align: left;
             opacity: 0.8;
+            z-index: 1000;
+            pointer-events: none;
         }
 
         .title {
             font-weight: 600;
-            font-size: 14px;
-            letter-spacing: 4px;
+            font-size: 18px;
+            letter-spacing: 6px;
             margin-bottom: 4px;
         }
 
@@ -72,9 +78,13 @@
             font-size: 10px;
             letter-spacing: 2px;
             color: var(--accent-color);
+            text-transform: uppercase;
         }
 
         .load-btn {
+            position: fixed;
+            top: 24px;
+            right: 24px;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
             color: var(--text-color);
@@ -86,6 +96,7 @@
             text-transform: uppercase;
             backdrop-filter: blur(4px);
             transition: all 0.3s ease;
+            z-index: 1000;
         }
 
         .load-btn:hover {
@@ -222,11 +233,19 @@
 
     <canvas id="glCanvas"></canvas>
 
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10000; pointer-events: auto;">
+        <button class="nav-btn" onclick="window.location.href='../index.html'"
+            style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); transition: all 0.2s;">M</button>
+        <button class="nav-btn" onclick="randomApp()"
+            style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); transition: all 0.2s;">R</button>
+    </div>
+
     <div class="ui-layer">
         <div class="header">
             <div class="title-block">
                 <div class="title">FREOSAN</div>
-                <div class="subtitle" id="track-name">FREEZE AND SHATTER SOUNDS</div>
+                <div class="subtitle" id="track-name">GRANULAR SYNTHESISER PAD</div>
             </div>
             <button class="load-btn" onclick="document.getElementById('file-input').click()">Load Audio</button>
             <input type="file" id="file-input"
@@ -331,6 +350,12 @@
 
                 this.buffer = this.generateDroneBuffer();
 
+                // Load initial sample
+                fetch('../Audiofiles/Harpnotes.m4a')
+                    .then(response => response.arrayBuffer())
+                    .then(buffer => this.loadBuffer(buffer))
+                    .catch(err => console.error("Error loading Harpnotes:", err));
+
                 for (let i = 0; i < CONFIG.grainCount; i++) {
                     this.grains.push(new Grain(this.ctx, this.reverb, this.dryGain, this.buffer));
                 }
@@ -401,7 +426,7 @@
                 }
 
                 const rms = Math.sqrt(sumSq / count);
-                if (rms < 0.001) return 1.0; 
+                if (rms < 0.001) return 1.0;
 
                 let gain = targetRMS / rms;
                 gain = Math.max(0.5, Math.min(gain, 8.0));
@@ -631,20 +656,9 @@
             state.isPlaying = true;
         });
     </script>
-    <div id="nav-buttons"
-        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
-        <button onclick="window.location.href='../index.html'"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
-    </div>
     <script>
         function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
             let random = apps[Math.floor(Math.random() * apps.length)];
             while (window.location.href.includes(random)) {
                 random = apps[Math.floor(Math.random() * apps.length)];
@@ -652,6 +666,69 @@
             window.location.href = '../' + random + '/';
         }
     </script>
+
+
+
+
+
+
+
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!state.isPlaying) return; // Global rule: manual init
+
+                    const canvas = document.getElementById('glCanvas');
+                    const rect = canvas.getBoundingClientRect();
+
+                    // MIDI X/Y mapping: X=pitch, Y=velocity
+                    const x = (data.note / 127) * rect.width;
+                    const y = (1 - (data.velocity / 127)) * rect.height;
+
+                    // Update state to simulate touch
+                    state.isTouching = true;
+                    state.touchX = x / rect.width;
+                    state.touchY = y / rect.height;
+
+                    // Display touch status
+                    document.getElementById('status-text').innerText = "MIDI FREEZING";
+                    document.getElementById('status-text').classList.add('visible');
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    state.isTouching = false;
+                    document.getElementById('status-text').classList.remove('visible');
+
+                    Canvas.particles.forEach(p => {
+                        p.vx = (Math.random() - 0.5) * 5;
+                        p.vy = (Math.random() - 0.5) * 5;
+                    });
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const masterG = Audio.master;
+                        if (masterG && masterG.gain) {
+                            masterG.gain.setTargetAtTime(data.value / 127, Audio.ctx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

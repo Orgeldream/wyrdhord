@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>HEARG</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000;
+            --primary: #fff;
+            --dim: #444;
+            --accent: #222;
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--primary);
+            font-family: var(--font-main);
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        #nav-buttons {
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .ui-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+
+        .ui-layer.hidden {
+            opacity: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+        }
+
+        .title-block {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            transform: none;
+            text-align: left;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .title-text {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 6px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle-text {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #444;
+            text-transform: uppercase;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100dvh;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        #start-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            gap: 20px;
+        }
+
+        .big-btn {
+            background: transparent;
+            border: 1px solid #fff;
+            padding: min(20px, 4vw) min(50px, 10vw);
+            font-size: min(14px, 4vw);
+            letter-spacing: min(5px, 1vw);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.4s;
+            text-transform: uppercase;
+            font-weight: 600;
+            min-width: 150px;
+        }
+
+        .big-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .init-text {
+            color: #333;
+            font-size: min(10px, 3vw);
+            text-transform: uppercase;
+            letter-spacing: min(4px, 1vw);
+        }
+
+        #orientation-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 20000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            text-align: center;
+            padding: 40px;
+        }
+
+        @media (orientation: portrait) and (max-width: 1024px) {
+            #orientation-overlay {
+                display: flex;
+            }
+        }
+
+        #mode-indicator {
+            position: fixed;
+            bottom: max(20px, env(safe-area-inset-bottom));
+            right: max(20px, env(safe-area-inset-right));
+            font-size: min(10px, 2.5vw);
+            letter-spacing: min(3px, 0.8vw);
+            color: #222;
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+
+        /* Mobile-specific optimizations */
+        @media (max-width: 768px) {
+            .nav-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 13px;
+            }
+
+            #mode-indicator {
+                bottom: 10px;
+                right: 10px;
+            }
+        }
+
+        /* Prevent text selection on mobile */
+        .no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        #bubbler-ctrl {
+            position: fixed;
+            bottom: max(20px, env(safe-area-inset-bottom));
+            left: max(20px, env(safe-area-inset-left));
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        .ctrl-label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #444;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 120px;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 1px;
+            background: #222;
+            border: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            border: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #666;
+            margin-top: -6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        input[type=range]:active::-webkit-slider-thumb {
+            background: #fff;
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+
+<body class="no-select">
+
+    <div id="orientation-overlay">
+        <div style="font-size: 24px; margin-bottom: 20px;">↻</div>
+        <div style="font-size: 12px; letter-spacing: 3px; text-transform: uppercase;">Please rotate for resonant surface
+        </div>
+    </div>
+
+    <div id="start-overlay">
+        <button class="big-btn" id="init-btn">initialise</button>
+        <div class="init-text">Bronzeworks in the dark</div>
+    </div>
+
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10000;">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="randomApp()">R</button>
+    </div>
+
+    <div class="ui-layer" id="ui-layer">
+        <div class="header">
+            <div class="title-block">
+                <div class="title-text">HEARG</div>
+                <div class="subtitle-text">RESONANT BRONZE SURFACE</div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="bubbler-ctrl">
+        <div class="ctrl-label">Bubbler Density</div>
+        <input type="range" id="bubbler-slider" min="0" max="100" value="30">
+    </div>
+
+    <div id="mode-indicator">Resonant Bronze Surface</div>
+
+    <script>
+        // --- CONFIG & SCALES ---
+        const RATIOS = [1 / 1, 135 / 128, 9 / 8, 45 / 32, 3 / 2, 405 / 256, 27 / 16, 2 / 1];
+        const BASE_FREQ = 110;
+
+        let audioCtx, masterGain, compressor;
+        let canvas, ctx, width, height;
+        let ripples = [];
+        let nodes = [];
+        let pixelRatio = 1;
+        let isMobile = false;
+
+        // Bubbler State
+        let bubblerBuffer, bubblerWritePos = 0;
+        let bubblerParticles = [];
+        let bubblerHPF, bubblerReverb, bubblerReverbGain;
+        const BUBBLER_LEN = 4; // seconds of circular recording
+        const state = {
+            bubblerLevel: 0.5
+        };
+
+        const RECIPES = {
+            GONG: [
+                { f: 1.0, g: 1.0, d: 20.0 },
+                { f: 2.01, g: 0.3, d: 11.0 },
+                { f: 2.98, g: 0.15, d: 8.0 },
+                { f: 3.99, g: 0.08, d: 5.0 }
+            ],
+            KETTLE: [
+                { f: 1.0, g: 1.0, d: 8.0 },
+                { f: 2.45, g: 0.5, d: 4.0 },
+                { f: 3.82, g: 0.2, d: 2.0 },
+                { f: 5.12, g: 0.1, d: 1.0 }
+            ],
+            BAR: [
+                { f: 1.0, g: 1.0, d: 3.0 },
+                { f: 2.72, g: 0.6, d: 1.5 },
+                { f: 5.44, g: 0.3, d: 0.8 },
+                { f: 8.16, g: 0.1, d: 0.4 }
+            ]
+        };
+
+        window.onload = () => {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            document.getElementById('init-btn').addEventListener('click', initAudio);
+
+            // Check if mobile
+            isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            // Add event listeners
+            window.addEventListener('resize', resize);
+            window.addEventListener('orientationchange', resize);
+
+            // Touch events with proper handling
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+            canvas.addEventListener('mousedown', handleMouseDown);
+
+            document.getElementById('bubbler-slider').addEventListener('input', (e) => {
+                state.bubblerLevel = e.target.value / 100;
+            });
+
+            resize();
+        };
+
+        function resize() {
+            pixelRatio = window.devicePixelRatio || 1;
+            width = window.innerWidth;
+            height = window.innerHeight;
+
+            // Set canvas size accounting for pixel ratio
+            canvas.width = width * pixelRatio;
+            canvas.height = height * pixelRatio;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+
+            // Scale context for high DPI displays
+            ctx.scale(pixelRatio, pixelRatio);
+
+            setupNodes();
+        }
+
+        function getCanvasCoordinates(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / pixelRatio / rect.width;
+            const scaleY = canvas.height / pixelRatio / rect.height;
+
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function setupNodes() {
+            nodes = [];
+
+            // Adjust grid density based on screen size
+            const isSmallScreen = width < 768;
+            const cols = isSmallScreen ? 18 : 26;
+            const rows = isSmallScreen ? 10 : 16;
+
+            // Adjust sizes based on screen
+            const sizeMultiplier = isSmallScreen ? 0.7 : 1;
+            const paddingX = width * (isSmallScreen ? 0.08 : 0.05);
+            const paddingY = height * (isSmallScreen ? 0.12 : 0.1);
+            const stepX = (width - paddingX * 2) / (cols - 1);
+            const stepY = (height - paddingY * 2) / (rows - 1);
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const jitterX = (Math.random() - 0.5) * stepX * (isSmallScreen ? 0.3 : 0.6);
+                    const jitterY = (Math.random() - 0.5) * stepY * (isSmallScreen ? 0.3 : 0.6);
+                    const x = paddingX + c * stepX + jitterX;
+                    const y = paddingY + r * stepY + jitterY;
+
+                    // Y position Determines Type: Top (0) = BAR, Middle = KETTLE, Bottom (1) = GONG
+                    const yPct = r / (rows - 1);
+                    let type = 'KETTLE';
+                    if (yPct < 0.25) type = 'BAR';
+                    else if (yPct > 0.75) type = 'GONG';
+
+                    // X position Determines Pitch Ratio
+                    const xPct = c / (cols - 1);
+                    const ratioIdxFloat = xPct * (RATIOS.length - 1);
+                    const idxFloor = Math.floor(ratioIdxFloat);
+                    const r1 = RATIOS[idxFloor];
+                    const r2 = RATIOS[Math.min(RATIOS.length - 1, idxFloor + 1)];
+                    const pct = ratioIdxFloat - idxFloor;
+                    const logR = Math.log2(r1) + (Math.log2(r2) - Math.log2(r1)) * pct;
+                    const ratio = Math.pow(2, logR);
+
+                    // Base frequency depends on type for more variety
+                    let freq = BASE_FREQ * ratio;
+                    if (type === 'BAR') freq *= 4;
+                    if (type === 'KETTLE') freq *= 2;
+                    if (type === 'GONG') freq *= 0.5;
+
+                    nodes.push({
+                        id: `node_${r}_${c}`,
+                        x, y,
+                        r: (type === 'GONG' ? 24 : (type === 'KETTLE' ? 12 : 8)) * sizeMultiplier,
+                        type,
+                        freq,
+                        isRect: type === 'BAR',
+                        hitRadius: (type === 'GONG' ? 45 : (type === 'KETTLE' ? 30 : 20)) * sizeMultiplier
+                    });
+                }
+            }
+        }
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -15;
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.5;
+            compressor.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            // Setup Bubbler Recording
+            bubblerBuffer = audioCtx.createBuffer(2, audioCtx.sampleRate * BUBBLER_LEN, audioCtx.sampleRate);
+            const recorder = audioCtx.createScriptProcessor(4096, 2, 2);
+            recorder.onaudioprocess = (e) => {
+                const bLeft = bubblerBuffer.getChannelData(0);
+                const bRight = bubblerBuffer.getChannelData(1);
+                const inLeft = e.inputBuffer.getChannelData(0);
+                const inRight = e.inputBuffer.getChannelData(1);
+
+                for (let i = 0; i < inLeft.length; i++) {
+                    bLeft[bubblerWritePos] = inLeft[i];
+                    bRight[bubblerWritePos] = inRight[i];
+                    bubblerWritePos = (bubblerWritePos + 1) % bLeft.length;
+                }
+            };
+            compressor.connect(recorder);
+            recorder.connect(audioCtx.destination); // Must connect to destination for processing
+
+            // FX Chain for Bubbler
+            bubblerHPF = audioCtx.createBiquadFilter();
+            bubblerHPF.type = 'highpass';
+            bubblerHPF.frequency.value = 300;
+
+            bubblerReverb = audioCtx.createConvolver();
+            bubblerReverbGain = audioCtx.createGain();
+            bubblerReverbGain.gain.value = 0.6;
+
+            // Simple IR for reverb
+            const irLen = audioCtx.sampleRate * 2;
+            const irBuf = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
+            for (let c = 0; c < 2; c++) {
+                const data = irBuf.getChannelData(c);
+                for (let i = 0; i < irLen; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2);
+            }
+            bubblerReverb.buffer = irBuf;
+
+            bubblerHPF.connect(bubblerReverb);
+            bubblerReverb.connect(bubblerReverbGain);
+            bubblerReverbGain.connect(masterGain);
+
+            document.getElementById('start-overlay').style.display = 'none';
+
+            // Start Bubbler Scheduler
+            scheduleBubbler();
+
+            requestAnimationFrame(animate);
+        }
+
+        function scheduleBubbler() {
+            if (!audioCtx) return;
+
+            const nextIn = (0.2 + (1 - state.bubblerLevel) * 0.8) * 200;
+            setTimeout(scheduleBubbler, nextIn);
+
+            if (state.bubblerLevel > 0.05) {
+                const count = Math.ceil(state.bubblerLevel * 3);
+                for (let i = 0; i < count; i++) playBubblerGrain();
+            }
+        }
+
+        function playBubblerGrain() {
+            const duration = 0.1 + Math.random() * 0.4;
+            const offset = Math.random() * (BUBBLER_LEN - duration - 0.1);
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = bubblerBuffer;
+
+            const g = audioCtx.createGain();
+            const p = audioCtx.createStereoPanner();
+
+            const t = audioCtx.currentTime;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(state.bubblerLevel * 0.6, t + duration * 0.4);
+            g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+            const rates = [0.5, 0.75, 1, 1.5, 2];
+            source.playbackRate.value = rates[Math.floor(Math.random() * rates.length)];
+            p.pan.value = Math.random() * 2 - 1;
+
+            source.connect(g);
+            g.connect(p);
+            p.connect(bubblerHPF);
+
+            source.start(t, offset, duration);
+            source.stop(t + duration + 0.1);
+
+            bubblerParticles.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: -Math.random() * 1.5,
+                alpha: 0.6,
+                size: 1 + Math.random() * 3
+            });
+        }
+
+        class ModalVoice {
+            constructor(freq, recipe, destination) {
+                this.freq = freq; this.oscs = []; this.gains = [];
+                const t0 = audioCtx.currentTime;
+                recipe.forEach(mode => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.type = 'sine'; osc.frequency.value = freq * mode.f;
+                    gain.gain.setValueAtTime(0, t0);
+                    gain.gain.linearRampToValueAtTime(mode.g * 0.15, t0 + 0.005);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t0 + mode.d);
+                    osc.connect(gain); gain.connect(destination);
+                    osc.start(t0); osc.stop(t0 + mode.d + 0.5);
+                    this.oscs.push(osc); this.gains.push(gain);
+                });
+            }
+            damp() {
+                const t = audioCtx.currentTime;
+                this.gains.forEach(g => { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.05); });
+                setTimeout(() => { this.oscs.forEach(o => o.stop()); }, 200);
+            }
+        }
+
+        function strikeNode(node) {
+            if (!audioCtx) return;
+            if (!node.voices) node.voices = [];
+            // Prevent too many voices per node
+            if (node.voices.length > 1) { node.voices[0].damp(); node.voices.shift(); }
+            const v = new ModalVoice(node.freq, RECIPES[node.type], compressor);
+            node.voices.push(v); node.strikeTime = Date.now();
+            ripples.push({ x: node.x, y: node.y, r: 0, alpha: 1, type: node.type });
+        }
+
+        function dampNode(node) {
+            if (node.voices && node.voices.length > 0) { node.voices.forEach(v => v.damp()); node.voices = []; }
+            node.dampTime = Date.now();
+        }
+
+        let activeTouches = new Map();
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+                const coords = getCanvasCoordinates(t.clientX, t.clientY);
+                activeTouches.set(t.identifier, coords);
+                processHit(coords.x, coords.y, true);
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+                const coords = getCanvasCoordinates(t.clientX, t.clientY);
+                activeTouches.set(t.identifier, coords);
+                processHit(coords.x, coords.y, false);
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+                activeTouches.delete(t.identifier);
+            }
+        }
+
+        function handleMouseDown(e) {
+            const coords = getCanvasCoordinates(e.clientX, e.clientY);
+            activeTouches.set('mouse', coords);
+            processHit(coords.x, coords.y, true);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        function handleMouseUp() {
+            activeTouches.delete('mouse');
+            window.removeEventListener('mouseup', handleMouseUp);
+        }
+
+        function processHit(x, y, isInitial) {
+            let hitNode = null;
+            let minDist = Infinity;
+
+            nodes.forEach(n => {
+                let dist = Infinity;
+                if (n.isRect) {
+                    const hw = n.hitRadius * 1.2, hh = n.hitRadius;
+                    if (x > n.x - hw && x < n.x + hw && y > n.y - hh && y < n.y + hh) dist = 0;
+                } else {
+                    dist = Math.max(0, Math.hypot(x - n.x, y - n.y) - n.hitRadius);
+                }
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    hitNode = n;
+                }
+            });
+
+            if (hitNode && minDist < (isMobile ? 40 : 60)) {
+                if (isInitial) strikeNode(hitNode);
+                else if (Math.random() < 0.15) dampNode(hitNode);
+            }
+        }
+
+        function animate() {
+            // Clear canvas properly for high DPI
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Background grid hints
+            ctx.strokeStyle = '#050505';
+            ctx.lineWidth = 1;
+            const gridSize = 10;
+            for (let i = 1; i < gridSize; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * width / gridSize, 0);
+                ctx.lineTo(i * width / gridSize, height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * height / gridSize);
+                ctx.lineTo(width, i * height / gridSize);
+                ctx.stroke();
+            }
+
+            // Draw ripples
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const r = ripples[i];
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${r.alpha * 0.2})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                r.r += (r.type === 'GONG' ? 1.5 : 4);
+                r.alpha -= 0.02;
+                if (r.alpha <= 0) ripples.splice(i, 1);
+            }
+
+            // Draw nodes
+            nodes.forEach(n => {
+                const age = Date.now() - (n.strikeTime || 0);
+                const glow = Math.max(0, 1 - age / 1200);
+                const isRinging = (n.voices && n.voices.length > 0);
+
+                // Proximity awareness
+                let proximity = 0;
+                activeTouches.forEach(t => {
+                    const dist = Math.hypot(t.x - n.x, t.y - n.y);
+                    const p = Math.max(0, 1 - dist / (isMobile ? 100 : 150));
+                    proximity = Math.max(proximity, p);
+                });
+
+                ctx.save();
+                if (n.isRect) {
+                    const hw = n.r * 1.5, hh = n.r;
+                    const idleColor = `rgba(21, 21, 21, ${0.3 + proximity * 0.4})`;
+                    ctx.fillStyle = isRinging ? `rgba(255,255,255,${0.15 + glow * 0.4})` : idleColor;
+                    ctx.fillRect(n.x - hw, n.y - hh, hw * 2, hh * 2);
+                    ctx.strokeStyle = isRinging ? `rgba(255,255,255,${0.2 + glow * 0.6})` : `rgba(42, 42, 42, ${0.4 + proximity * 0.6})`;
+                    ctx.strokeRect(n.x - hw, n.y - hh, hw * 2, hh * 2);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+                    const baseIdle = (n.type === 'GONG') ? 26 : 18;
+                    const idleColor = `rgba(${baseIdle}, ${baseIdle}, ${baseIdle}, ${0.4 + proximity * 0.5})`;
+                    ctx.fillStyle = isRinging ? `rgba(255,255,255,${0.08 + glow * 0.3})` : idleColor;
+                    ctx.fill();
+                    ctx.strokeStyle = isRinging ? `rgba(255,255,255,${0.2 + glow * 0.7})` : `rgba(51, 51, 51, ${0.4 + proximity * 0.6})`;
+                    ctx.lineWidth = n.type === 'GONG' ? 1.5 : 0.5;
+                    ctx.stroke();
+
+                    if (n.type === 'KETTLE') {
+                        ctx.beginPath();
+                        ctx.arc(n.x, n.y, n.r * 0.3, 0, Math.PI * 2);
+                        ctx.strokeStyle = isRinging ? `rgba(255,255,255,${0.1 + glow * 0.3})` : `rgba(68, 68, 68, ${0.3 + proximity * 0.5})`;
+                        ctx.stroke();
+
+                        // Brighter boss
+                        ctx.beginPath();
+                        ctx.arc(n.x, n.y, 2, 0, Math.PI * 2);
+                        ctx.fillStyle = isRinging ? '#fff' : `rgba(100, 100, 100, ${0.2 + proximity * 0.8})`;
+                        ctx.fill();
+                    }
+                }
+                ctx.restore();
+            });
+
+            // Draw Bubbler Particles
+            ctx.fillStyle = `rgba(255, 255, 255, 0.3)`;
+            for (let i = bubblerParticles.length - 1; i >= 0; i--) {
+                const p = bubblerParticles[i];
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha * 0.5})`;
+                ctx.fill();
+
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.005;
+                if (p.alpha <= 0) bubblerParticles.splice(i, 1);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+    </script>
+
+
+
+
+
+
+
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                const midiActiveNodes = new Map(); // note -> node
+
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!audioCtx) return; // Global rule: manual init
+
+                    const canvas = document.getElementById('canvas');
+                    const rect = canvas.getBoundingClientRect();
+
+                    // MIDI X/Y mapping: X=pitch, Y=velocity
+                    const x = (data.note / 127) * rect.width;
+                    const y = (1 - (data.velocity / 127)) * rect.height;
+
+                    // Quantize to nearest node
+                    let nearestNode = null;
+                    let minDist = Infinity;
+                    nodes.forEach(n => {
+                        const dx = x - n.x;
+                        const dy = y - n.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearestNode = n;
+                        }
+                    });
+
+                    if (nearestNode) {
+                        const noteId = "midi_" + data.note;
+                        strikeNode(nearestNode);
+                        midiActiveNodes.set(data.note, nearestNode);
+                        // Visual feedback
+                        activeTouches.set(noteId, { x: nearestNode.x, y: nearestNode.y, startTime: Date.now() });
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    const noteId = "midi_" + data.note;
+                    activeTouches.delete(noteId);
+                    const node = midiActiveNodes.get(data.note);
+                    if (node) {
+                        dampNode(node);
+                        midiActiveNodes.delete(data.note);
+                    }
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const master = masterGain;
+                        if (master && master.gain) {
+                            master.gain.setTargetAtTime(data.value / 127, audioCtx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
+</body>
+
+</html>

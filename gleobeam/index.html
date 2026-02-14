@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GLEOBEAM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #000000;
+      --text-color: #ffffff;
+      --accent-color: #888888;
+      --border-color: #333333;
+      --font-main: 'Josefin Sans', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-main);
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100vw;
+      height: 100vh;
+      background: url('OrgelDream_circle_template.png') no-repeat center center;
+      background-size: 50%;
+      opacity: 0.1;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Nav Buttons */
+    #nav-buttons {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      gap: 10px;
+      transition: opacity 0.3s;
+    }
+
+    #nav-buttons.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .nav-btn {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid #333;
+      color: #666;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-family: var(--font-main);
+      font-size: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: #fff;
+      color: #000;
+    }
+
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+      z-index: 10;
+      transition: opacity 0.3s ease;
+    }
+
+    .ui-layer.hidden {
+      opacity: 0;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: auto;
+    }
+
+    .title-block {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      opacity: 0.8;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .title {
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: 6px;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-weight: 300;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--accent-color);
+      text-transform: uppercase;
+    }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: opacity 0.3s;
+    }
+
+    #controls.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .control-group {
+      background: rgba(10, 10, 10, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 140px;
+      backdrop-filter: blur(4px);
+    }
+
+    .control-group label {
+      color: var(--accent-color);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    .control-group input[type="number"] {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      color: #fff;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-family: var(--font-main);
+    }
+
+    .control-group .value-display {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 400;
+      text-align: right;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      color: #666;
+      padding: 6px 12px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      font-family: var(--font-main);
+      letter-spacing: 1px;
+    }
+
+    .toggle-btn.active {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+    }
+
+    #hide-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 11;
+      background: transparent;
+      border: none;
+      color: var(--accent-color);
+      font-size: 10px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: var(--font-main);
+      padding: 10px;
+    }
+
+    #hide-controls:hover {
+      color: #fff;
+    }
+
+    #init-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    #init-btn {
+      background: transparent;
+      border: 1px solid #fff;
+      border-radius: 4px;
+      color: #fff;
+      padding: 15px 40px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-family: var(--font-main);
+      font-weight: 600;
+    }
+
+    #init-btn:hover {
+      background: #fff;
+      color: #000;
+    }
+
+    .init-text {
+      color: var(--accent-color);
+      font-size: 11px;
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.6;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="canvas"></canvas>
+
+  <div id="nav-buttons"
+    style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10000;">
+    <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+    <button class="nav-btn" onclick="goToRandom()">R</button>
+  </div>
+
+  <div class="ui-layer">
+    <div class="header">
+      <div class="title-block">
+        <div class="title">GLEOBEAM</div>
+        <div class="subtitle">43-TONE JUST INTONATION SYNTHESISER WITH OCTAVE ECHOES</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="init-overlay">
+    <button id="init-btn">Initialise</button>
+    <div class="init-text">43-tone just intonation zither with octave echoes</div>
+  </div>
+
+  <button id="hide-controls">Hide</button>
+
+  <div id="controls">
+    <div class="control-group">
+      <label>Fundamental</label>
+      <input type="number" id="fundamental-input" value="440" min="55" max="880" step="1">
+      <div class="value-display"><span id="fund-display">440</span> Hz</div>
+    </div>
+
+    <div class="control-group">
+      <label>Octave Echo</label>
+      <button class="toggle-btn active" id="echo-toggle">Enabled</button>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════════════
+    // TUNING SYSTEM - Harry Partch's 43-tone just intonation
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const partch43Ratios = [
+      "1/1", "81/80", "33/32", "21/20", "16/15", "12/11", "11/10", "10/9", "9/8",
+      "8/7", "7/6", "32/27", "6/5", "11/9", "5/4", "14/11", "9/7", "21/16",
+      "4/3", "27/20", "11/8", "7/5", "10/7", "16/11", "40/27", "3/2",
+      "32/21", "14/9", "11/7", "8/5", "18/11", "5/3", "27/16", "12/7",
+      "7/4", "16/9", "9/5", "20/11", "11/6", "15/8", "40/21", "64/33", "2/1"
+    ];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUDIO ENGINE - Electric guitar-like plucks
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    let audioContext;
+    let masterGain;
+    let isInitialized = false;
+
+    // State
+    let fundamental = 440;
+    let echoEnabled = true;
+    let frequencies = [];
+    let stringStates = [];
+
+    function initAudio() {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioContext.createGain();
+      masterGain.gain.value = 0.4;
+      masterGain.connect(audioContext.destination);
+      isInitialized = true;
+      calculateFrequencies();
+      initStringStates();
+    }
+
+    function calculateFrequencies() {
+      frequencies = partch43Ratios.map(ratio => {
+        const [n, d] = ratio.split("/").map(Number);
+        return fundamental * (n / d);
+      });
+    }
+
+    function initStringStates() {
+      stringStates = frequencies.map((freq, i) => ({
+        freq,
+        ratio: partch43Ratios[i],
+        lastPluck: 0,
+        glowAmount: 0,
+        region: i < 15 ? 'low' : i < 30 ? 'mid' : 'high'
+      }));
+    }
+
+    // Guitar-like pluck synthesis with position-based brightness
+    function pluckString(index, velocity = 1, bridgePosition = 0.5) {
+      if (!isInitialized || !frequencies[index]) return;
+
+      const now = audioContext.currentTime;
+      const freq = frequencies[index];
+
+      // Bridge position determines attack sharpness and brightness
+      // 0 = near nut (soft, mellow), 1 = near bridge (sharp, bright)
+      const attackTime = 0.002 + (1 - bridgePosition) * 0.008; // Faster attack near bridge
+      const decayTime = 1.2 + (1 - bridgePosition) * 0.6; // Shorter decay near bridge
+      const filterCutoff = 800 + bridgePosition * 5000; // Higher cutoff near bridge
+      const resonance = 1.5 + bridgePosition * 3; // More resonance near bridge
+      const noiseAmount = 0.05 + bridgePosition * 0.25; // More noise near bridge
+
+      // Main oscillator with slight detuning for realism
+      const osc = audioContext.createOscillator();
+      osc.type = 'sine';
+      const detune = (Math.random() - 0.5) * 3; // Small random detune
+      osc.frequency.value = freq;
+      osc.detune.value = detune;
+
+      // Add subtle vibrato for living quality
+      const vibGain = audioContext.createGain();
+      const vibOsc = audioContext.createOscillator();
+      vibOsc.frequency.value = 5 + Math.random() * 3;
+      vibGain.gain.value = freq * 0.002 * (0.5 + bridgePosition * 0.5);
+      vibOsc.connect(vibGain);
+      vibGain.connect(osc.frequency);
+
+      // Filter for brightness control (like picking position on guitar)
+      const filter = audioContext.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = filterCutoff;
+      filter.Q.value = resonance;
+
+      // Envelope with sharp attack near bridge
+      const env = audioContext.createGain();
+      env.gain.setValueAtTime(0, now);
+      env.gain.linearRampToValueAtTime(velocity, now + attackTime);
+      env.gain.exponentialRampToValueAtTime(velocity * 0.2, now + attackTime + decayTime * 0.1);
+      env.gain.exponentialRampToValueAtTime(0.001, now + attackTime + decayTime);
+
+      // Connect everything
+      osc.connect(filter);
+      filter.connect(env);
+      env.connect(masterGain);
+
+      // Start oscillators
+      osc.start(now);
+      vibOsc.start(now);
+
+      // Stop at end of envelope
+      osc.stop(now + attackTime + decayTime + 0.1);
+      vibOsc.stop(now + attackTime + decayTime + 0.1);
+
+      // Noise burst for pluck articulation - stronger near bridge
+      const noiseDuration = 0.008 + bridgePosition * 0.03;
+      const noiseBuffer = audioContext.createBuffer(1,
+        Math.floor(audioContext.sampleRate * noiseDuration),
+        audioContext.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+
+      for (let i = 0; i < noiseData.length; i++) {
+        const t = i / noiseData.length;
+        // Near bridge: sharp attack, fast decay
+        const env = bridgePosition > 0.7 ?
+          Math.exp(-t * 25) : // Very fast decay near bridge
+          Math.exp(-t * 12);  // Slower decay near nut
+        noiseData[i] = (Math.random() * 2 - 1) * env * noiseAmount * velocity;
+      }
+
+      const noise = audioContext.createBufferSource();
+      noise.buffer = noiseBuffer;
+      const noiseEnv = audioContext.createGain();
+      noiseEnv.gain.value = 0;
+      noiseEnv.gain.setValueAtTime(velocity * noiseAmount, now);
+      noiseEnv.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
+
+      noise.connect(noiseEnv);
+      noiseEnv.connect(masterGain);
+      noise.start(now);
+      noise.stop(now + noiseDuration + 0.1);
+
+      // Immediate octave echo (if enabled)
+      if (echoEnabled) {
+        setTimeout(() => {
+          triggerOctaveEcho(index, velocity * 0.3, bridgePosition * 0.5);
+        }, 0);
+      }
+
+      // Update visual state
+      stringStates[index].lastPluck = Date.now();
+      stringStates[index].glowAmount = 1;
+    }
+
+    // OCTAVE echo (changed from perfect fifth to octave 2/1)
+    function triggerOctaveEcho(stringIndex, velocity, brightness) {
+      const now = audioContext.currentTime + 0.001;
+
+      // OCTAVE = 2/1 ratio (instead of 3/2)
+      const [n, d] = "2/1".split("/").map(Number);
+      const transposedFreq = frequencies[stringIndex] * (n / d);
+
+      // Echo voice - softer and more subtle
+      const osc = audioContext.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = transposedFreq;
+
+      // Slight detune for the echo too
+      osc.detune.value = (Math.random() - 0.5) * 2;
+
+      const env = audioContext.createGain();
+      env.gain.setValueAtTime(0, now);
+      env.gain.linearRampToValueAtTime(velocity * 0.12, now + 0.03);
+      env.gain.exponentialRampToValueAtTime(0.001, now + 0.03 + 1.5);
+
+      osc.connect(env);
+      env.connect(masterGain);
+
+      osc.start(now);
+      osc.stop(now + 0.03 + 1.5 + 0.1);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RENDERING - Canvas-based visual interface
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let isPortrait = window.innerHeight > window.innerWidth;
+    let stringRects = [];
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      isPortrait = canvas.height > canvas.width;
+      calculateStringRects();
+      render();
+    }
+
+    function calculateStringRects() {
+      stringRects = [];
+      const numStrings = stringStates.length;
+
+      if (isPortrait) {
+        // Vertical layout - strings run horizontally
+        const stringHeight = canvas.height / numStrings;
+        stringStates.forEach((state, i) => {
+          stringRects.push({
+            x: 0,
+            y: i * stringHeight,
+            width: canvas.width,
+            height: stringHeight,
+            index: i
+          });
+        });
+      } else {
+        // Horizontal layout - strings run vertically
+        const stringWidth = canvas.width / numStrings;
+        stringStates.forEach((state, i) => {
+          stringRects.push({
+            x: i * stringWidth,
+            y: 0,
+            width: stringWidth,
+            height: canvas.height,
+            index: i
+          });
+        });
+      }
+    }
+
+    function render() {
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const now = Date.now();
+
+      stringStates.forEach((state, i) => {
+        const rect = stringRects[i];
+
+        // Decay glow
+        const timeSincePluck = now - state.lastPluck;
+        state.glowAmount = Math.max(0, state.glowAmount - 0.02);
+
+        // Region colors (Grayscale)
+        let baseColor;
+        if (state.region === 'low') {
+          baseColor = { r: 70, g: 70, b: 70 };
+        } else if (state.region === 'mid') {
+          baseColor = { r: 90, g: 90, b: 90 };
+        } else {
+          baseColor = { r: 110, g: 110, b: 110 };
+        }
+
+        // Glow effect
+        const glowIntensity = state.glowAmount * 150;
+        const r = Math.min(255, baseColor.r + glowIntensity);
+        const g = Math.min(255, baseColor.g + glowIntensity);
+        const b = Math.min(255, baseColor.b + glowIntensity);
+
+        // Draw string background
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.15)`;
+        if (isPortrait) {
+          ctx.fillRect(rect.x + 10, rect.y + 1, rect.width - 20, rect.height - 2);
+        } else {
+          ctx.fillRect(rect.x + 1, rect.y + 10, rect.width - 2, rect.height - 20);
+        }
+
+        // Draw string line
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.3 + state.glowAmount * 0.7})`;
+        ctx.lineWidth = 1 + state.glowAmount * 2;
+        ctx.beginPath();
+        if (isPortrait) {
+          const y = rect.y + rect.height / 2;
+          ctx.moveTo(rect.x + 20, y);
+          ctx.lineTo(rect.x + rect.width - 20, y);
+        } else {
+          const x = rect.x + rect.width / 2;
+          ctx.moveTo(x, rect.y + 20);
+          ctx.lineTo(x, rect.y + rect.height - 20);
+        }
+        ctx.stroke();
+      });
+    }
+
+    function animate() {
+      render();
+      requestAnimationFrame(animate);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INTERACTION - Touch and mouse handling
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    let activeTouches = new Map();
+
+    function getStringAtPoint(x, y) {
+      for (let rect of stringRects) {
+        if (x >= rect.x && x <= rect.x + rect.width &&
+          y >= rect.y && y <= rect.y + rect.height) {
+          return rect.index;
+        }
+      }
+      return -1;
+    }
+
+    function handleStart(x, y, id) {
+      const stringIndex = getStringAtPoint(x, y);
+      if (stringIndex >= 0) {
+        const rect = stringRects[stringIndex];
+
+        // Calculate velocity and bridge position based on touch position
+        // For portrait: left side of string = near nut (soft), right side = near bridge (bright)
+        // For landscape: top of string = near nut (soft), bottom = near bridge (bright)
+        let velocity, bridgePosition;
+        if (isPortrait) {
+          // Position along the string (left to right)
+          const positionAlongString = (x - rect.x) / rect.width; // 0 at left, 1 at right
+          velocity = 0.5 + positionAlongString * 0.5; // More velocity near bridge (right)
+          bridgePosition = positionAlongString; // 1 at right (bridge), 0 at left (nut)
+        } else {
+          // Position along the string (top to bottom)
+          const positionAlongString = (y - rect.y) / rect.height; // 0 at top, 1 at bottom
+          velocity = 0.5 + positionAlongString * 0.5; // More velocity near bridge (bottom)
+          bridgePosition = positionAlongString; // 1 at bottom (bridge), 0 at top (nut)
+        }
+
+        pluckString(stringIndex, velocity, bridgePosition);
+        activeTouches.set(id, stringIndex);
+      }
+    }
+
+    function handleMove(x, y, id) {
+      const stringIndex = getStringAtPoint(x, y);
+      const lastString = activeTouches.get(id);
+
+      if (stringIndex >= 0 && stringIndex !== lastString) {
+        const rect = stringRects[stringIndex];
+
+        let velocity, bridgePosition;
+        if (isPortrait) {
+          const positionAlongString = (x - rect.x) / rect.width;
+          velocity = 0.5 + positionAlongString * 0.4;
+          bridgePosition = positionAlongString;
+        } else {
+          const positionAlongString = (y - rect.y) / rect.height;
+          velocity = 0.5 + positionAlongString * 0.4;
+          bridgePosition = positionAlongString;
+        }
+
+        pluckString(stringIndex, velocity * 0.7, bridgePosition);
+        activeTouches.set(id, stringIndex);
+      }
+    }
+
+    function handleEnd(id) {
+      activeTouches.delete(id);
+    }
+
+    // Touch events
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      for (let touch of e.changedTouches) {
+        const rect = canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        handleStart(x, y, touch.identifier);
+      }
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (let touch of e.changedTouches) {
+        const rect = canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        handleMove(x, y, touch.identifier);
+      }
+    });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      for (let touch of e.changedTouches) {
+        handleEnd(touch.identifier);
+      }
+    });
+
+    // Mouse events
+    let mouseDown = false;
+    canvas.addEventListener('mousedown', (e) => {
+      mouseDown = true;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      handleStart(x, y, 'mouse');
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (mouseDown) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        handleMove(x, y, 'mouse');
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      mouseDown = false;
+      handleEnd('mouse');
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      mouseDown = false;
+      handleEnd('mouse');
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // UI CONTROLS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    document.getElementById('fundamental-input').addEventListener('input', (e) => {
+      fundamental = parseFloat(e.target.value);
+      document.getElementById('fund-display').textContent = fundamental.toFixed(0);
+      calculateFrequencies();
+      initStringStates();
+    });
+
+    document.getElementById('echo-toggle').addEventListener('click', (e) => {
+      echoEnabled = !echoEnabled;
+      e.target.classList.toggle('active');
+      e.target.textContent = echoEnabled ? 'Enabled' : 'Disabled';
+    });
+
+    // Hide/show controls
+    let controlsVisible = true;
+    document.getElementById('hide-controls').addEventListener('click', () => {
+      controlsVisible = !controlsVisible;
+      const controls = document.getElementById('controls');
+      const uiLayer = document.querySelector('.ui-layer');
+      const btn = document.getElementById('hide-controls');
+      if (controlsVisible) {
+        controls.classList.remove('hidden');
+        uiLayer.classList.remove('hidden');
+        btn.textContent = 'Hide';
+      } else {
+        controls.classList.add('hidden');
+        uiLayer.classList.add('hidden');
+        btn.textContent = 'Show';
+      }
+    });
+
+    function randomApp() {
+      const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+      let random = apps[Math.floor(Math.random() * apps.length)];
+      window.location.href = '../' + random + '/';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INITIALIZATION
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    document.getElementById('init-btn').addEventListener('click', () => {
+      initAudio();
+      document.getElementById('init-overlay').style.display = 'none';
+      resize();
+      animate();
+    });
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(resize, 100);
+    });
+
+    // Initial setup (without audio)
+    resize();
+  </script>
+
+
+
+
+
+
+
+
+
+  <!-- MIDI Integration -->
+  <script src="../midi-handler.js"></script>
+  <script>
+    (function () {
+      window.addEventListener('load', () => {
+        if (!window.MIDIHandler) {
+          console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+          return;
+        }
+
+        console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+        // Note Mapping
+        window.MIDIHandler.on('noteon', (data) => {
+          if (!isInitialized) return; // Global rule: manual init
+
+          const index = data.note % 43;
+          const vel = data.velocity / 127;
+
+          // Map to pluckString(index, velocity, bridgePosition)
+          const bridgePos = 0.3 + (data.note / 127) * 0.4;
+
+          if (typeof pluckString === 'function') {
+            pluckString(index, vel, bridgePos);
+          }
+        });
+
+        window.MIDIHandler.on('noteoff', (data) => {
+          // No specific noteoff handling needed for zither plucks
+        });
+
+        // CC Mapping
+        window.MIDIHandler.on('cc', (data) => {
+          if (data.controller === 1) { // Mod Wheel -> Master Volume
+            if (masterGain) {
+              masterGain.gain.setTargetAtTime(data.value / 127, audioContext.currentTime, 0.05);
+            }
+          }
+        });
+      });
+    })();
+  </script>
+  <!-- /MIDI Integration -->
+
+</body>
+
+</html>

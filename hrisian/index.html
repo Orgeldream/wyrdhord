@@ -201,7 +201,8 @@
 
     <div id="start-overlay">
         <div class="start-msg">Tap to initialise<br><br><span
-                style="font-size: 12px; margin-top: 10px; display: block;">Touch to stimulate<br><br>Left/right: Damping & Reverb Mix<br><br>Up/down: Reverb Size</span></div>
+                style="font-size: 12px; margin-top: 10px; display: block;">Touch to stimulate<br><br>Left/right: Damping
+                & Reverb Mix<br><br>Up/down: Reverb Size</span></div>
     </div>
 
     <script>
@@ -210,8 +211,8 @@
             plate: {
                 ratios: [1.0, 1.272, 1.618, 2.058, 2.618, 3.330, 4.236, 5.388, 6.854, 8.719],
                 gains: [1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55],
-                q: [150, 160, 170, 180, 190, 200, 210, 220, 230, 240], 
-                baseFreq: 350 
+                q: [150, 160, 170, 180, 190, 200, 210, 220, 230, 240],
+                baseFreq: 350
             },
             tube: {
                 ratios: [1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0],
@@ -253,7 +254,7 @@
                     feedback.gain.value = 0.7;
                     lowpass.type = 'lowpass';
                     lowpass.frequency.value = 4000;
-                    delayGain.gain.value = 0.12; 
+                    delayGain.gain.value = 0.12;
 
                     this.input.connect(delay);
                     delay.connect(lowpass);
@@ -301,9 +302,9 @@
 
             updateRoomSize() {
                 const t = this.ctx.currentTime;
-                const sizeMultiplier = 0.5 + (this.roomSize * 1.5); 
-                const feedback = 0.5 + (this.roomSize * 0.35); 
-                const cutoff = 5000 - (this.roomSize * 3000); 
+                const sizeMultiplier = 0.5 + (this.roomSize * 1.5);
+                const feedback = 0.5 + (this.roomSize * 0.35);
+                const cutoff = 5000 - (this.roomSize * 3000);
 
                 const baseTimes = [41, 67, 97, 139, 173, 211, 251, 293].map(t => t / 1000);
 
@@ -325,7 +326,7 @@
 
                 this.baseFreq = 200;
                 this.damping = 0.5;
-                this.currentMode = 'membrane'; 
+                this.currentMode = 'membrane';
 
                 for (let i = 0; i < 16; i++) {
                     const filter = ctx.createBiquadFilter();
@@ -340,7 +341,7 @@
                     this.filterGains.push(gain);
                 }
 
-                this.setup('membrane'); 
+                this.setup('membrane');
             }
 
             setup(mode) {
@@ -366,7 +367,7 @@
             }
 
             setDamping(val) {
-                this.damping = val; 
+                this.damping = val;
                 const model = PHYSICS_MODELS[this.currentMode];
 
                 for (let i = 0; i < this.filters.length; i++) {
@@ -403,7 +404,7 @@
             trigger(velocity) {
                 const t = this.ctx.currentTime;
 
-                const bufferSize = this.ctx.sampleRate * 0.05; 
+                const bufferSize = this.ctx.sampleRate * 0.05;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const data = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) {
@@ -418,7 +419,7 @@
                 noiseFilter.frequency.value = 1000 + (velocity * 4000);
 
                 const noiseGain = this.ctx.createGain();
-                noiseGain.gain.setValueAtTime(velocity * 1.5, t); 
+                noiseGain.gain.setValueAtTime(velocity * 1.5, t);
                 noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
 
                 noise.connect(noiseFilter);
@@ -439,7 +440,7 @@
                 if (this.isScraping) return;
                 this.isScraping = true;
 
-                const bufferSize = this.ctx.sampleRate * 2; 
+                const bufferSize = this.ctx.sampleRate * 2;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const data = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) {
@@ -468,7 +469,7 @@
                 if (!this.isScraping) return;
 
                 const t = this.ctx.currentTime;
-                this.scrapeGain.gain.setTargetAtTime(velocity * 0.8, t, 0.05); 
+                this.scrapeGain.gain.setTargetAtTime(velocity * 0.8, t, 0.05);
 
                 const freq = 200 + (velocity * 3000);
                 this.scrapeFilter.frequency.setTargetAtTime(freq, t, 0.1);
@@ -537,13 +538,13 @@
                 this.reverb = new DenseReverb(this.ctx);
 
                 this.masterGain = this.ctx.createGain();
-                this.masterGain.gain.value = 3.0; 
+                this.masterGain.gain.value = 3.0;
 
                 this.resonator.output.connect(this.reverb.input);
                 this.reverb.output.connect(this.masterGain);
 
                 const compressor = this.ctx.createDynamicsCompressor();
-                compressor.threshold.value = -15; 
+                compressor.threshold.value = -15;
                 compressor.ratio.value = 4;
                 compressor.attack.value = 0.003;
                 compressor.release.value = 0.1;
@@ -568,8 +569,7 @@
                 let lastY = 0;
                 let lastTime = 0;
 
-                const handleStart = (e) => {
-                    e.preventDefault();
+                this.handleStart = (e) => {
                     const t = e.touches ? e.touches[0] : e;
                     lastX = t.clientX;
                     lastY = t.clientY;
@@ -581,8 +581,7 @@
                     this.updateParams(t.clientX, t.clientY);
                 };
 
-                const handleMove = (e) => {
-                    e.preventDefault();
+                this.handleMove = (e) => {
                     const t = e.touches ? e.touches[0] : e;
                     const now = Date.now();
                     const dt = now - lastTime;
@@ -591,7 +590,7 @@
                         const dx = t.clientX - lastX;
                         const dy = t.clientY - lastY;
                         const dist = Math.sqrt(dx * dx + dy * dy);
-                        const velocity = Math.min(1.0, dist / (dt * 2)); 
+                        const velocity = Math.min(1.0, dist / (dt * 2));
 
                         this.exciter.updateScrape(velocity);
 
@@ -603,23 +602,22 @@
                     this.updateParams(t.clientX, t.clientY);
                 };
 
-                const handleEnd = (e) => {
-                    e.preventDefault();
+                this.handleEnd = (e) => {
                     this.exciter.stopScrape();
                 };
 
-                this.canvas.addEventListener('mousedown', handleStart);
-                this.canvas.addEventListener('mousemove', handleMove);
-                this.canvas.addEventListener('mouseup', handleEnd);
-                this.canvas.addEventListener('touchstart', handleStart, { passive: false });
-                this.canvas.addEventListener('touchmove', handleMove, { passive: false });
-                this.canvas.addEventListener('touchend', handleEnd);
+                this.canvas.addEventListener('mousedown', (e) => { e.preventDefault(); this.handleStart(e); });
+                this.canvas.addEventListener('mousemove', (e) => { e.preventDefault(); this.handleMove(e); });
+                this.canvas.addEventListener('mouseup', (e) => { e.preventDefault(); this.handleEnd(e); });
+                this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); this.handleStart(e); }, { passive: false });
+                this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); this.handleMove(e); }, { passive: false });
+                this.canvas.addEventListener('touchend', (e) => { e.preventDefault(); this.handleEnd(e); });
 
                 window.addEventListener('devicemotion', (e) => {
                     const acc = e.acceleration;
                     if (acc) {
                         const force = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-                        if (force > 15) { 
+                        if (force > 15) {
                             this.exciter.trigger(Math.min(1.0, (force - 15) / 20));
                         }
                     }
@@ -695,7 +693,7 @@
                 for (let j = 0; j < 2; j++) {
                     const dir = j === 0 ? 1 : -1;
 
-                    for (let i = 0; i < bufferLength; i += 2) { 
+                    for (let i = 0; i < bufferLength; i += 2) {
                         const v = dataArray[i] / 128.0;
                         const angle = (i / bufferLength) * Math.PI * 2 * dir + (Date.now() * 0.0005 * dir);
 
@@ -732,7 +730,7 @@
             }
         }
 
-        window.onload = () => new App();
+        window.onload = () => { window.app = new App(); };
     </script>
     <div id="nav-buttons"
         style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
@@ -747,14 +745,77 @@
     </div>
     <script>
         function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
             let random = apps[Math.floor(Math.random() * apps.length)];
             while (window.location.href.includes(random)) {
-                 random = apps[Math.floor(Math.random() * apps.length)];
+                random = apps[Math.floor(Math.random() * apps.length)];
             }
             window.location.href = '../' + random + '/';
         }
     </script>
+
+
+
+
+
+
+
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!window.app) return;
+
+                    if (!window.app.isRunning) {
+                        return; // Silently ignore MIDI until manually initialized
+                    }
+
+                    const canvas = document.getElementById('canvas');
+                    if (!canvas) return;
+
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (data.note / 127) * rect.width;
+                    const y = (1 - (data.velocity / 127)) * rect.height;
+
+                    const mockEvent = {
+                        clientX: rect.left + x,
+                        clientY: rect.top + y,
+                        preventDefault: () => { }
+                    };
+
+                    window.app.handleStart(mockEvent);
+                    window.app.handleMove(mockEvent);
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    if (window.app) window.app.handleEnd({ preventDefault: () => { } });
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const master = window.app?.masterGain;
+                        if (master) {
+                            master.gain.setTargetAtTime(data.value / 127 * 5.0, window.app.ctx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MICROTONAL REED ORGAN · TONAL SPACE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #0a0a0a;
+            --primary: #ffffff;
+            --dim: #222222;
+            --accent: #444444;
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+            font-family: var(--font-main);
+            overflow: hidden;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            overscroll-behavior: none;
+        }
+
+        /* ===== HEADER LAYOUT (three‑column grid) ===== */
+        header {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            pointer-events: none;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+
+        header.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .title-block {
+            text-align: left;
+            opacity: 0.8;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .title-text {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle-text {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        /* Center column – holds M and R buttons */
+        .nav-center {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        /* Right column – holds CONTROLS button */
+        .nav-right {
+            display: flex;
+            justify-content: flex-end;
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        /* Special style for CONTROLS button (wider, pill shape) */
+        #ctrl-toggle {
+            width: auto;
+            padding: 0 12px;
+            border-radius: 15px;
+            font-size: 9px;
+            letter-spacing: 1px;
+        }
+
+        .title {
+            font-size: 12px;
+            letter-spacing: 3px;
+            font-weight: 300;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        /* Class to hide elements until after initialisation */
+        .init-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 1.5s ease;
+        }
+
+        #container {
+            flex-grow: 1;
+            position: relative;
+            touch-action: none;
+            cursor: crosshair;
+            overflow: hidden;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            gap: 20px;
+        }
+
+        .init-text {
+            color: #444;
+            font-size: 10px;
+            text-align: center;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .big-btn {
+            border: 1px solid #fff;
+            padding: 15px 40px;
+            font-size: 14px;
+            letter-spacing: 5px;
+            color: #fff;
+            background: transparent;
+            transition: 0.3s;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .big-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .ratio-display {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            font-size: 8vw;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.08);
+            letter-spacing: -2px;
+            z-index: 0;
+            transition: opacity 0.3s;
+        }
+
+        #drawbars {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+            padding: 15px 25px;
+            background: rgba(10, 10, 10, 0.8);
+            border-radius: 40px;
+            border: 1px solid var(--dim);
+            backdrop-filter: blur(10px);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+        }
+
+        #drawbars.hidden {
+            transform: translate(-50%, 200px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .drawbar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drawbar {
+            width: 8px;
+            height: 120px;
+            background: #1a1a1a;
+            position: relative;
+            border-radius: 4px;
+            cursor: ns-resize;
+            border: 1px solid #333;
+        }
+
+        .drawbar-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: #fff;
+            border-radius: 4px;
+            pointer-events: none;
+            height: 50%;
+        }
+
+        .drawbar-label {
+            font-size: 9px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="start-overlay">
+        <button class="big-btn" id="init-btn">INITIALISE</button>
+        <div class="init-text">MICROTONAL REED ORGAN · PARTCH 43-NOTE SCALE</div>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header id="ui-header">
+        <!-- Left: title and subtitle (initially hidden) -->
+        <div class="title-block init-hidden">
+            <div class="title-text">ORGANISTRE</div>
+            <div class="subtitle-text">MICROTONAL REED ORGAN</div>
+        </div>
+
+        <!-- Center: M and R buttons (always visible) -->
+        <div class="nav-center">
+            <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+            <button class="nav-btn" onclick="goToRandom()">R</button>
+        </div>
+
+        <!-- Right: CONTROLS button (initially hidden) -->
+        <div class="nav-right init-hidden">
+            <button class="nav-btn" id="ctrl-toggle">CONTROLS</button>
+        </div>
+    </header>
+
+    <div id="container">
+        <div id="ratio-label" class="ratio-display">1/1</div>
+        <!-- Drawbars (initially hidden) -->
+        <div id="drawbars" class="init-hidden">
+            <div class="drawbar-container">
+                <div class="drawbar" data-idx="0">
+                    <div class="drawbar-fill" style="height: 100%;"></div>
+                </div>
+                <div class="drawbar-label">16'</div>
+            </div>
+            <div class="drawbar-container">
+                <div class="drawbar" data-idx="1">
+                    <div class="drawbar-fill" style="height: 75%;"></div>
+                </div>
+                <div class="drawbar-label">8'</div>
+            </div>
+            <div class="drawbar-container">
+                <div class="drawbar" data-idx="2">
+                    <div class="drawbar-fill" style="height: 50%;"></div>
+                </div>
+                <div class="drawbar-label">4'</div>
+            </div>
+            <div class="drawbar-container">
+                <div class="drawbar" data-idx="3">
+                    <div class="drawbar-fill" style="height: 25%;"></div>
+                </div>
+                <div class="drawbar-label">2'</div>
+            </div>
+            <div class="drawbar-container">
+                <div class="drawbar" data-idx="4">
+                    <div class="drawbar-fill" style="height: 10%;"></div>
+                </div>
+                <div class="drawbar-label">1'</div>
+            </div>
+        </div>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        // ==================== YOUR FULL, UNCHANGED SCRIPT ====================
+        const partchScale = [
+            { r: 1 / 1, l: '1/1' }, { r: 81 / 80, l: '81/80' }, { r: 33 / 32, l: '33/32' }, { r: 21 / 20, l: '21/20' },
+            { r: 16 / 15, l: '16/15' }, { r: 12 / 11, l: '12/11' }, { r: 11 / 10, l: '11/10' }, { r: 10 / 9, l: '10/9' },
+            { r: 9 / 8, l: '9/8' }, { r: 8 / 7, l: '8/7' }, { r: 7 / 6, l: '7/6' }, { r: 32 / 27, l: '32/27' },
+            { r: 6 / 5, l: '6/5' }, { r: 11 / 9, l: '11/9' }, { r: 5 / 4, l: '5/4' }, { r: 14 / 11, l: '14/11' },
+            { r: 9 / 7, l: '9/7' }, { r: 21 / 16, l: '21/16' }, { r: 4 / 3, l: '4/3' }, { r: 27 / 20, l: '27/20' },
+            { r: 11 / 8, l: '11/8' }, { r: 7 / 5, l: '7/5' }, { r: 10 / 7, l: '10/7' }, { r: 16 / 11, l: '16/11' },
+            { r: 40 / 27, l: '40/27' }, { r: 3 / 2, l: '3/2' }, { r: 32 / 21, l: '32/21' }, { r: 14 / 9, l: '14/9' },
+            { r: 11 / 7, l: '11/7' }, { r: 8 / 5, l: '8/5' }, { r: 18 / 11, l: '18/11' }, { r: 5 / 3, l: '5/3' },
+            { r: 27 / 16, l: '27/16' }, { r: 12 / 7, l: '12/7' }, { r: 7 / 4, l: '7/4' }, { r: 16 / 9, l: '16/9' },
+            { r: 9 / 5, l: '9/5' }, { r: 20 / 11, l: '20/11' }, { r: 11 / 6, l: '11/6' }, { r: 15 / 8, l: '15/8' },
+            { r: 40 / 21, l: '40/21' }, { r: 64 / 33, l: '64/33' }, { r: 160 / 81, l: '160/81' }, { r: 2 / 1, l: '2/1' }
+        ];
+
+        let audioCtx, masterGain, compressor, canvas, ctx, width, height;
+        let activeVoices = new Map();
+        let harmonics = [0.5, 1, 2, 4, 8];
+        let harmonicGains = [0.8, 0.6, 0.4, 0.25, 0.1];
+        const BASE_FREQ = 110.0; // A2
+
+        window.onload = () => {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            resize();
+            window.addEventListener('resize', resize);
+            document.getElementById('init-btn').onclick = initAudio;
+
+            canvas.addEventListener('pointerdown', handlePointerDown);
+            canvas.addEventListener('pointermove', handlePointerMove);
+            window.addEventListener('pointerup', handlePointerUp);
+            window.addEventListener('pointercancel', handlePointerUp);
+
+            initUIHandlers();
+            document.getElementById('ctrl-toggle').onclick = () => {
+                const db = document.getElementById('drawbars');
+                db.classList.toggle('hidden');
+            };
+        };
+
+        function initUIHandlers() {
+            document.querySelectorAll('.drawbar').forEach(el => {
+                el.onpointerdown = (e) => {
+                    el.isDragging = true;
+                    updateDrawbar(e, el);
+                };
+                window.addEventListener('pointermove', (e) => {
+                    if (el.isDragging) updateDrawbar(e, el);
+                });
+                window.addEventListener('pointerup', () => el.isDragging = false);
+            });
+        }
+
+        function updateDrawbar(e, el) {
+            const rect = el.getBoundingClientRect();
+            let pct = (rect.bottom - e.clientY) / rect.height;
+            pct = Math.max(0, Math.min(1, pct));
+            el.querySelector('.drawbar-fill').style.height = (pct * 100) + '%';
+            harmonicGains[parseInt(el.dataset.idx)] = pct;
+
+            // Update any active voices
+            activeVoices.forEach(voice => {
+                voice.updateDrawbarLevels();
+            });
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight - 50;
+        }
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create a VERY SUBTLE tremolo for reed organ character
+            const globalTremoloLFO = audioCtx.createOscillator();
+            globalTremoloLFO.frequency.value = 6.0; // Slightly slower
+            const tremoloGain = audioCtx.createGain();
+            tremoloGain.gain.value = 0.015; // MUCH more subtle amplitude modulation
+            globalTremoloLFO.connect(tremoloGain);
+
+            // Create subtle vibrato LFO
+            const globalVibratoLFO = audioCtx.createOscillator();
+            globalVibratoLFO.frequency.value = 5.0; // Slightly slower
+            const vibratoGain = audioCtx.createGain();
+            vibratoGain.gain.value = 0.0003; // Barely noticeable pitch variation
+            globalVibratoLFO.connect(vibratoGain);
+
+            globalTremoloLFO.start();
+            globalVibratoLFO.start();
+
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -14;
+            compressor.knee.value = 6;
+            compressor.ratio.value = 3;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.05;
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.6;
+
+            // Connect tremolo to master gain for subtle amplitude modulation
+            tremoloGain.connect(masterGain.gain);
+
+            compressor.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            // Hide start overlay and reveal hidden UI elements
+            document.getElementById('start-overlay').style.display = 'none';
+            document.querySelector('.title-block').classList.remove('init-hidden');
+            document.querySelector('.nav-right').classList.remove('init-hidden');
+            document.getElementById('drawbars').classList.remove('init-hidden');
+
+            requestAnimationFrame(animate);
+        }
+
+        class ReedVoice {
+            constructor(id) {
+                this.id = id;
+                this.oscillators = [];
+                this.gains = [];
+                this.envelopeGain = audioCtx.createGain();
+                this.envelopeGain.gain.value = 0;
+
+                // Use StereoPannerNode instead of PannerNode - much smoother for L/R panning
+                this.panner = audioCtx.createStereoPanner();
+
+                // Create simple low-pass filter to soften the sound
+                this.lowPassFilter = audioCtx.createBiquadFilter();
+                this.lowPassFilter.type = 'lowpass';
+                this.lowPassFilter.frequency.value = 6000;
+                this.lowPassFilter.Q.value = 0.5;
+
+                // Create subtle resonance filter
+                this.resonanceFilter = audioCtx.createBiquadFilter();
+                this.resonanceFilter.type = 'peaking';
+                this.resonanceFilter.frequency.value = 1600;
+                this.resonanceFilter.gain.value = 3.0;
+                this.resonanceFilter.Q.value = 1.5;
+
+                // Connect chain
+                this.envelopeGain.connect(this.resonanceFilter);
+                this.resonanceFilter.connect(this.lowPassFilter);
+                this.lowPassFilter.connect(this.panner);
+                this.panner.connect(compressor);
+
+                this.x = 0;
+                this.y = 0;
+                this.currentFreq = BASE_FREQ;
+                this.currentPan = 0;
+                this.isReleasing = false;
+                this.isSounding = false;
+                this.lastUpdateTime = 0;
+                this.lastPanUpdateTime = 0;
+                this.attackTime = 0.01;
+                this.releaseTime = 0.08;
+                this.panSmoothingTime = 0.12; // Smooth panning over 120ms
+
+                // Create harmonics with VERY subtle detuning
+                harmonics.forEach((h, i) => {
+                    const osc = audioCtx.createOscillator();
+
+                    // Use triangle wave for a softer, more organ-like tone
+                    osc.type = 'triangle';
+
+                    // Very subtle random detuning
+                    const detune = (Math.random() - 0.5) * 0.8;
+                    osc.detune.value = detune;
+
+                    const g = audioCtx.createGain();
+                    g.gain.value = harmonicGains[i] * 1.2;
+
+                    // Add VERY subtle individual vibrato
+                    const oscVibrato = audioCtx.createOscillator();
+                    oscVibrato.frequency.value = 4 + Math.random() * 1.5;
+                    const vibGain = audioCtx.createGain();
+                    vibGain.gain.value = 0.2 + Math.random() * 0.3;
+                    oscVibrato.connect(vibGain);
+                    vibGain.connect(osc.detune);
+                    oscVibrato.start();
+
+                    osc.connect(g);
+                    g.connect(this.envelopeGain);
+                    osc.start();
+
+                    this.oscillators.push(osc);
+                    this.gains.push(g);
+                });
+            }
+
+            updateDrawbarLevels() {
+                const t = audioCtx.currentTime;
+                this.gains.forEach((g, i) => {
+                    g.gain.setTargetAtTime(harmonicGains[i] * 1.2, t, 0.05);
+                });
+            }
+
+            update(freq, xPct, x, y) {
+                const t = audioCtx.currentTime;
+                const now = Date.now();
+
+                // Allow more frequent updates for responsiveness
+                if (now - this.lastUpdateTime < 5) return;
+                this.lastUpdateTime = now;
+
+                this.x = x;
+                this.y = y;
+                this.currentFreq = freq;
+
+                // Trigger attack if we're not already sounding
+                if (!this.isSounding && !this.isReleasing) {
+                    this.isSounding = true;
+                    this.envelopeGain.gain.cancelScheduledValues(t);
+                    this.envelopeGain.gain.setValueAtTime(this.envelopeGain.gain.value, t);
+                    // Quick attack to full volume
+                    this.envelopeGain.gain.linearRampToValueAtTime(1.0, t + this.attackTime);
+                }
+
+                // Update panning with anti-click measures
+                // StereoPannerNode uses -1 (left) to 1 (right)
+                const targetPan = (xPct * 2 - 1);
+
+                // Only update pan if we've moved significantly or enough time has passed
+                const panChanged = Math.abs(targetPan - this.currentPan) > 0.05;
+                const timeSinceLastPan = now - this.lastPanUpdateTime;
+
+                if (panChanged || timeSinceLastPan > 16) { // 60fps
+                    // Use setTargetAtTime for smooth panning transitions
+                    this.panner.pan.setTargetAtTime(targetPan, t, this.panSmoothingTime);
+                    this.currentPan = targetPan;
+                    this.lastPanUpdateTime = now;
+
+                    // Add a tiny fade when crossing center to prevent clicks
+                    if (Math.abs(targetPan) < 0.1 && Math.abs(this.currentPan) < 0.1) {
+                        // When near center, slightly reduce volume to prevent phase cancellation clicks
+                        const centerGain = 0.95; // 5% reduction at center
+                        this.envelopeGain.gain.setTargetAtTime(centerGain, t, 0.05);
+                    }
+                }
+
+                // Update frequencies with gentle smoothing
+                this.oscillators.forEach((osc, i) => {
+                    const baseFreq = freq * harmonics[i];
+                    osc.frequency.setTargetAtTime(baseFreq, t, 0.06);
+
+                    // Adjust harmonic balance based on position
+                    const tilt = 0.8 + xPct * 0.4;
+                    this.gains[i].gain.setTargetAtTime(harmonicGains[i] * 1.2 * tilt, t, 0.08);
+                });
+
+                // Adjust filters based on position for tonal variation
+                this.lowPassFilter.frequency.setTargetAtTime(4000 + xPct * 4000, t, 0.1);
+                this.resonanceFilter.frequency.setTargetAtTime(1200 + xPct * 800, t, 0.1);
+                this.resonanceFilter.gain.setTargetAtTime(2.0 + xPct * 2.0, t, 0.1);
+            }
+
+            stop() {
+                if (this.isReleasing) return;
+
+                this.isReleasing = true;
+                this.isSounding = false;
+                const t = audioCtx.currentTime;
+
+                // Before releasing, smoothly center the pan to prevent click
+                this.panner.pan.setTargetAtTime(0, t, 0.05);
+
+                // Smooth release envelope to prevent clicks
+                this.envelopeGain.gain.cancelScheduledValues(t);
+                this.envelopeGain.gain.setValueAtTime(this.envelopeGain.gain.value, t);
+                this.envelopeGain.gain.exponentialRampToValueAtTime(0.001, t + this.releaseTime);
+
+                // Clean up after release
+                setTimeout(() => {
+                    try {
+                        this.oscillators.forEach(osc => osc.stop());
+                        this.envelopeGain.disconnect();
+                        this.resonanceFilter.disconnect();
+                        this.lowPassFilter.disconnect();
+                        this.panner.disconnect();
+                    } catch (e) {
+                        // Ignore errors from already stopped nodes
+                    }
+                }, this.releaseTime * 1200);
+            }
+        }
+
+        function handlePointerDown(e) {
+            e.preventDefault();
+            updateVoice(e, true);
+        }
+
+        function handlePointerMove(e) {
+            e.preventDefault();
+            if (activeVoices.has(e.pointerId)) updateVoice(e, false);
+        }
+
+        function handlePointerUp(e) {
+            const v = activeVoices.get(e.pointerId);
+            if (v) {
+                v.stop();
+                setTimeout(() => {
+                    activeVoices.delete(e.pointerId);
+                }, v.releaseTime * 1200);
+            }
+            document.getElementById('ratio-label').style.opacity = 0;
+        }
+
+        function updateVoice(e, isNew) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const res = calculateRatio(y);
+            let voice = activeVoices.get(e.pointerId);
+
+            if (!voice && isNew) {
+                voice = new ReedVoice(e.pointerId);
+                activeVoices.set(e.pointerId, voice);
+            }
+
+            if (voice) {
+                const xPct = Math.max(0, Math.min(1, x / width));
+                const freq = BASE_FREQ * res.ratio;
+                voice.update(freq, xPct, x, y);
+
+                const label = document.getElementById('ratio-label');
+                label.innerText = res.display;
+                label.style.left = x + 'px';
+                label.style.top = (res.snappedY || y) + 'px';
+                label.style.opacity = 0.5;
+            }
+        }
+
+        function calculateRatio(py) {
+            const SNAP_THRESHOLD = 15;
+            let closestDist = Infinity;
+            let closestIdx = -1;
+
+            partchScale.forEach((item, index) => {
+                const targetY = (index / (partchScale.length - 1)) * height;
+                const dist = Math.abs(py - targetY);
+                if (dist < SNAP_THRESHOLD && dist < closestDist) {
+                    closestDist = dist;
+                    closestIdx = index;
+                }
+            });
+
+            if (closestIdx !== -1) {
+                const item = partchScale[closestIdx];
+                return {
+                    ratio: item.r,
+                    display: item.l,
+                    snappedY: (closestIdx / (partchScale.length - 1)) * height
+                };
+            } else {
+                const rIdxFloat = (py / height) * (partchScale.length - 1);
+                const i1 = Math.floor(rIdxFloat);
+                const r1 = partchScale[Math.max(0, i1)];
+                const r2 = partchScale[Math.min(partchScale.length - 1, i1 + 1)];
+                const pct = rIdxFloat - i1;
+                const r = r1.r + (r2.r - r1.r) * pct;
+                return { ratio: r, display: r.toFixed(3) };
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw scale lines
+            partchScale.forEach((item, i) => {
+                const y = (i / (partchScale.length - 1)) * height;
+                const isConsonant = ['1/1', '3/2', '4/3', '5/4', '6/5', '5/3', '2/1'].includes(item.l);
+
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.strokeStyle = isConsonant ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.04)';
+                ctx.lineWidth = isConsonant ? 1.2 : 0.3;
+                ctx.stroke();
+
+                ctx.font = '300 9px Josefin Sans';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = isConsonant ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)';
+                ctx.fillText(item.l, 10, y - 4);
+            });
+
+            // Draw active voices
+            activeVoices.forEach((v, id) => {
+                // Subtle background highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.01)';
+                ctx.fillRect(0, v.y - 10, width, 20);
+
+                // Voice indicator
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, 7, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.fill();
+
+                // Very subtle halo
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, 18, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            while (next === 'organistre') next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
+        }
+    </script>
+
+    <!-- MIDI Integration (unchanged) -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    console.log("MIDI NoteOn received:", data.note, "Vel:", data.velocity);
+
+                    const initVar = window.isInitialized ?? window.isAudioStarted ?? window.audioInitialized;
+                    if (initVar === false) {
+                        console.warn("App state suggests it is NOT initialized. MIDI might not produce sound.");
+                    }
+
+                    // Dynamic Note Range Detection
+                    const noteSets = [
+                        window.frequencies,
+                        window.TUNING,
+                        window.tubes,
+                        window.bars,
+                        window.bowls,
+                        window.strings,
+                        window.nodes,
+                        window.partchScale,
+                        window.partch43Ratios,
+                        window.RATIOS
+                    ];
+
+                    let numNotes = 43; // Standard Partch default
+                    for (const set of noteSets) {
+                        if (set && set.length) {
+                            numNotes = set.length;
+                            break;
+                        }
+                    }
+
+                    // Integer mapping (Whole notes only)
+                    const index = Math.floor(data.note % numNotes);
+                    const vel = data.velocity / 127;
+
+                    console.log("Mapped MIDI", data.note, "to Integer Index", index, "of", numNotes);
+
+                    // Strategy 1: Direct function calls
+                    const strikeFunc = window.strikeBar || window.pluckString || window.pluckKitharaString || window.strikeNode || window.triggerNote;
+                    if (strikeFunc) {
+                        console.log("Triggering via direct function:", strikeFunc.name);
+                        strikeFunc(index, vel);
+                        return;
+                    }
+
+                    // Strategy 2: Property-based Strike (Sceo, etc.)
+                    const objSets = [window.tubes, window.bars, window.bowls, window.nodes, window.strings];
+                    for (const set of objSets) {
+                        if (set && set[index]) {
+                            const item = set[index];
+                            if (item.strike || item.pluck || item.trigger) {
+                                const func = item.strike || item.pluck || item.trigger;
+                                console.log("Triggering item-style strike at index", index);
+                                func.call(item, vel, 0.5);
+                                return;
+                            }
+                        }
+                    }
+
+                    // Strategy 3: Event simulation with Centroid Snapping
+                    const canvas = document.getElementById('canvas') || document.querySelector('canvas');
+                    if (canvas) {
+                        const rect = canvas.getBoundingClientRect();
+                        let targetX = rect.width / 2;
+                        let targetY = (index / (numNotes - 1 || 1)) * rect.height;
+                        const noteId = "midi_" + data.note;
+
+                        // Snapping logic: find actual coordinates for the target index
+                        for (const set of objSets) {
+                            if (set && set[index]) {
+                                const item = set[index];
+                                const x = item.x ?? item.centerX ?? item.pos?.x;
+                                const y = item.y ?? item.centerY ?? item.pos?.y;
+                                if (x !== undefined && y !== undefined) {
+                                    targetX = x + (item.w ? item.w / 2 : 0);
+                                    targetY = y + (item.h ? item.h / 2 : 0);
+                                    console.log("Snapped event to centroid at", targetX, targetY);
+                                    break;
+                                }
+                            }
+                        }
+
+                        console.log("Triggering via event simulation at", targetX, targetY);
+
+                        const mockEvent = {
+                            clientX: rect.left + targetX,
+                            clientY: rect.top + targetY,
+                            pointerId: noteId,
+                            preventDefault: () => { }
+                        };
+
+                        if (window.handlePointerDown) window.handlePointerDown(mockEvent);
+                        else if (window.handleStart) window.handleStart(targetX, targetY, noteId);
+                        else if (window.handleInteraction) window.handleInteraction(mockEvent);
+                        else if (window.updateAudio) window.updateAudio(targetX, targetY);
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    const noteId = "midi_" + data.note;
+                    const mockEvent = { pointerId: noteId, preventDefault: () => { } };
+                    if (window.handlePointerUp) window.handlePointerUp(mockEvent);
+                    else if (window.handleEnd) window.handleEnd(noteId);
+                    else if (window.stopAudio) window.stopAudio();
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const master = window.masterGain || (window.Tone && window.Tone.Destination);
+                        if (master) {
+                            const node = master.gain || master;
+                            if (node && node.setTargetAtTime) {
+                                node.setTargetAtTime(data.value / 127, 0, 0.05);
+                            }
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+
+</body>
+<script>'undefined' === typeof _trfq || (window._trfq = []); 'undefined' === typeof _trfd && (window._trfd = []), _trfd.push({ 'tccl.baseHost': 'secureserver.net' }, { 'ap': 'cpsh-oh' }, { 'server': 'sxb1plzcpnl508229' }, { 'dcenter': 'sxb1' }, { 'cp_id': '10205730' }, { 'cp_cl': '8' }) // Monitoring performance to make your website faster. If you want to opt-out, please contact web hosting support.</script>
+<script src='https://img1.wsimg.com/traffic-assets/js/tccl.min.js'></script>
+
+</html>

@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SCEACEL - SLIDING STRINGS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #0a0a0a;
+            --primary: #ffffff;
+            --wood-plank: #888888;
+            --dim: #222222;
+            --font-main: 'Josefin Sans', sans-serif;
+            --ratio-white: rgba(255, 255, 255, 0.2);
+            --ratio-glow: rgba(255, 255, 255, 0.15);
+        }
+
+        .init-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 1.5s ease;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+            font-family: var(--font-main);
+            overflow: hidden;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            overscroll-behavior: none;
+        }
+
+        /* ===== PERSISTENT M/R BUTTONS (always visible, centered) ===== */
+        #persistent-nav {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 2000;
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        /* ===== ALWAYS-VISIBLE HIDE/SHOW BUTTON (top right) ===== */
+        #hide-btn-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2000;
+            pointer-events: auto;
+        }
+
+        .hide-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--dim);
+            color: #aaa;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            font-weight: 400;
+            backdrop-filter: blur(5px);
+        }
+
+        .hide-btn:hover {
+            border-color: #fff;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ===== COLLAPSIBLE HEADER EXTRAS (title, swap, hexad nav) ===== */
+        #collapsible-header {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            right: 120px;
+            /* leave space for the hide button */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            pointer-events: none;
+            /* container non‑interactive, children are */
+            z-index: 1000;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        #collapsible-header.hidden {
+            opacity: 0;
+            transform: translateY(-100%);
+            pointer-events: none;
+        }
+
+        #collapsible-header>* {
+            pointer-events: auto;
+            /* children clickable */
+        }
+
+        .title-block {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        .title-text {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 6px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle-text {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #444;
+            text-transform: uppercase;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        button.ctrl-btn {
+            background: transparent;
+            border: 1px solid var(--dim);
+            color: var(--wood-plank);
+            padding: 4px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-size: 10px;
+            transition: all 0.2s;
+            letter-spacing: 2px;
+            min-width: 80px;
+            text-align: center;
+            border-radius: 2px;
+        }
+
+        button.ctrl-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        #hexad-nav {
+            display: none;
+            /* shown only in KITHARA mode */
+            align-items: center;
+            gap: 5px;
+        }
+
+        .hexad-info {
+            font-size: 11px;
+            color: #666;
+            min-width: 120px;
+            text-align: center;
+            white-space: nowrap;
+            letter-spacing: 1px;
+        }
+
+        #instrument-container {
+            flex-grow: 1;
+            position: relative;
+            cursor: crosshair;
+            touch-action: none;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ratio-display {
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.1);
+            position: absolute;
+            top: 40%;
+            pointer-events: none;
+            z-index: 0;
+            transition: color 0.1s, text-shadow 0.1s;
+            white-space: nowrap;
+            font-family: var(--font-main);
+            transform: translateY(-50%);
+            letter-spacing: -2px;
+        }
+
+        #ratio-left {
+            left: 25%;
+            font-size: 8vw;
+            transform: translate(-50%, -50%);
+        }
+
+        #ratio-right {
+            left: 75%;
+            font-size: 8vw;
+            transform: translate(-50%, -50%);
+        }
+
+        #ratio-center {
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 15vh;
+            display: none;
+            opacity: 0.3;
+        }
+
+        .ratio-display.locked {
+            color: var(--ratio-white);
+            opacity: 1.0 !important;
+            text-shadow: 0 0 20px var(--ratio-glow);
+        }
+
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            gap: 20px;
+        }
+
+        .init-text {
+            color: #444;
+            font-size: 10px;
+            text-align: center;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .big-btn {
+            border: 1px solid #fff;
+            padding: 15px 40px;
+            font-size: 14px;
+            letter-spacing: 4px;
+            color: #fff;
+            background: transparent;
+            transition: 0.3s;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .big-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .canon-label {
+            position: absolute;
+            bottom: 15px;
+            font-size: 10px;
+            opacity: 0.5;
+            pointer-events: none;
+            width: 50%;
+            text-align: center;
+            letter-spacing: 2px;
+            transition: opacity 0.5s;
+        }
+
+        #label-left {
+            left: 0;
+            color: #444;
+        }
+
+        #label-right {
+            right: 0;
+            color: #444;
+        }
+
+        #label-center {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            letter-spacing: 5px;
+            color: #666;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="start-overlay">
+        <button class="big-btn" id="init-btn">INITIALISE</button>
+        <div class="init-text">SCEACEL · Sliding strings</div>
+    </div>
+
+    <!-- ===== PERSISTENT M/R BUTTONS (always visible) ===== -->
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
+
+    <!-- ===== ALWAYS-VISIBLE HIDE/SHOW BUTTON (initially hidden) ===== -->
+    <div id="hide-btn-container" class="init-hidden">
+        <button id="toggle-header" class="hide-btn">Hide</button>
+    </div>
+
+    <!-- ===== COLLAPSIBLE HEADER EXTRAS (title, swap, hexad nav) (initially hidden) ===== -->
+    <div id="collapsible-header" class="init-hidden">
+        <div class="title-block">
+            <div class="title-text">SCEACEL</div>
+            <div class="subtitle-text">SLIDING STRINGS</div>
+        </div>
+
+        <div class="header-right">
+            <div class="controls">
+                <div id="hexad-nav">
+                    <button class="ctrl-btn" id="prev-hex-btn" style="min-width: 25px; padding: 4px 0;">&lt;</button>
+                    <div class="hexad-info" id="hexad-display">HEXAD 1 (8/7-O)</div>
+                    <button class="ctrl-btn" id="next-hex-btn" style="min-width: 25px; padding: 4px 0;">&gt;</button>
+                </div>
+                <button class="ctrl-btn" id="swap-btn">SURROGATE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="instrument-container">
+        <div id="ratio-left" class="ratio-display">1/1</div>
+        <div id="ratio-right" class="ratio-display">1/1</div>
+        <div id="ratio-center" class="ratio-display">1/1</div>
+
+        <div id="label-left" class="canon-label">CANON ALPHA (8/7-O)</div>
+        <div id="label-right" class="canon-label">CANON BETA (3/2-U)</div>
+        <div id="label-center">KITHARA I</div>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        // ==================== YOUR FULL, UNCHANGED SCRIPT ====================
+        const SNAP_THRESHOLD = 15;
+        const BASE_FREQ = 98.0;
+
+        // --- SCALE DATA MAPPING ---
+        const partchScale = [
+            { r: 1 / 1, label: '1/1' }, { r: 81 / 80, label: '81/80' }, { r: 33 / 32, label: '33/32' }, { r: 21 / 20, label: '21/20' },
+            { r: 16 / 15, label: '16/15' }, { r: 12 / 11, label: '12/11' }, { r: 11 / 10, label: '11/10' }, { r: 10 / 9, label: '10/9' },
+            { r: 9 / 8, label: '9/8' }, { r: 8 / 7, label: '8/7' }, { r: 7 / 6, label: '7/6' }, { r: 32 / 27, label: '32/27' },
+            { r: 6 / 5, label: '6/5' }, { r: 11 / 9, label: '11/9' }, { r: 5 / 4, label: '5/4' }, { r: 14 / 11, label: '14/11' },
+            { r: 9 / 7, label: '9/7' }, { r: 21 / 16, label: '21/16' }, { r: 4 / 3, label: '4/3' }, { r: 27 / 20, label: '27/20' },
+            { r: 11 / 8, label: '11/8' }, { r: 7 / 5, label: '7/5' }, { r: 10 / 7, label: '10/7' }, { r: 16 / 11, label: '16/11' },
+            { r: 40 / 27, label: '40/27' }, { r: 3 / 2, label: '3/2' }, { r: 32 / 21, label: '32/21' }, { r: 14 / 9, label: '14/9' },
+            { r: 11 / 7, label: '11/7' }, { r: 8 / 5, label: '8/5' }, { r: 18 / 11, label: '18/11' }, { r: 5 / 3, label: '5/3' },
+            { r: 27 / 16, label: '27/16' }, { r: 12 / 7, label: '12/7' }, { r: 7 / 4, label: '7/4' }, { r: 16 / 9, label: '16/9' },
+            { r: 9 / 5, label: '9/5' }, { r: 20 / 11, label: '20/11' }, { r: 11 / 6, label: '11/6' }, { r: 15 / 8, label: '15/8' },
+            { r: 40 / 21, label: '40/21' }, { r: 64 / 33, label: '64/33' }, { r: 160 / 81, label: '160/81' }, { r: 2 / 1, label: '2/1' }
+        ];
+
+        const customRatios = [
+            { r: 1 / 1, l: '1/1' }, { r: 16 / 15, l: '16/15' }, { r: 12 / 11, l: '12/11' }, { r: 10 / 9, l: '10/9' },
+            { r: 9 / 8, l: '9/8' }, { r: 11 / 9, l: '11/9' }, { r: 6 / 5, l: '6/5' }, { r: 5 / 4, l: '5/4' },
+            { r: 21 / 16, l: '21/16' }, { r: 4 / 3, l: '4/3' }, { r: 27 / 20, l: '27/20' }, { r: 3 / 2, l: '3/2 (9/6)' },
+            { r: 8 / 5, l: '8/5' }, { r: 5 / 3, l: '5/3 (10/6)' }, { r: 27 / 16, l: '27/16' }, { r: 7 / 4, l: '7/4' },
+            { r: 16 / 9, l: '16/9' }, { r: 11 / 6, l: '11/6' }, { r: 15 / 8, l: '15/8' }, { r: 2 / 1, l: '16/8' }
+        ];
+
+        let scaleMap = [...partchScale];
+        customRatios.forEach(c => {
+            const existing = scaleMap.find(p => Math.abs(p.r - c.r) < 0.001);
+            if (existing) { existing.custom = true; existing.customLabel = c.l; }
+            else { scaleMap.push({ r: c.r, label: c.l, custom: true, customLabel: c.l }); }
+        });
+        scaleMap.sort((a, b) => a.r - b.r);
+
+        // --- GLOBAL VARIABLES ---
+        let audioCtx, masterGain, compressor, canvas, ctx, width, height;
+        let isMouseDown = false;
+        let pulses = [];
+        let rawMouseX = 0, rawMouseY = 0;
+        let activeVoices = [];
+        let activeTouches = new Map();
+
+        let slideLeft = { y: 0, ratio: 1.0, isSnapped: false };
+        let slideRight = { y: 0, ratio: 1.0, isSnapped: false };
+        let slideGlobal = { y: 0, ratio: 1.0, isSnapped: false };
+
+        let currentMode = 'SURROGATE';
+        let currentHexadIdx = 0;
+        let lastTriggeredStringIndex = -1;
+
+        const SURROGATE_ALPHA = [32 / 21, 8 / 7, 8 / 7, 32 / 21, 8 / 7, 8 / 7, 8 / 5, 40 / 21];
+        const SURROGATE_BETA = [3 / 2, 9 / 8, 9 / 8, 3 / 2, 9 / 8, 9 / 8, 27 / 20, 27 / 16];
+
+        const KITHARA_HEXADS = [
+            { id: 1, info: "8/7-O", hasRod: true, ratios: [8 / 7, 10 / 7, 12 / 7, 1 / 1, 9 / 7, 10 / 7] },
+            { id: 2, info: "11/8-U", hasRod: true, ratios: [11 / 8, 11 / 10, 11 / 6, 11 / 7, 11 / 9, 1 / 1] },
+            { id: 3, info: "16/9-O", hasRod: false, ratios: [11 / 9, 10 / 9, 4 / 3, 14 / 9, 1 / 1, 11 / 9] },
+            { id: 4, info: "9/8-U", hasRod: false, ratios: [9 / 8, 9 / 5, 3 / 2, 9 / 7, 1 / 1, 18 / 11] },
+            { id: 5, info: "16/11-O", hasRod: false, ratios: [16 / 11, 20 / 11, 12 / 11, 8 / 11, 18 / 11, 1 / 1] },
+            { id: 6, info: "7/4-U", hasRod: false, ratios: [7 / 5, 4 / 9, 1 / 1, 7 / 6, 7 / 6, 7 / 4] },
+            { id: 7, info: "4/3-O", hasRod: false, ratios: [4 / 3, 5 / 3, 1 / 1, 7 / 6, 3 / 2, 11 / 6] },
+            { id: 8, info: "1/1-U", hasRod: false, ratios: [1 / 1, 8 / 5, 4 / 3, 8 / 7, 16 / 9, 16 / 9] },
+            { id: 9, info: "8/5-O", hasRod: false, ratios: [8 / 5, 1 / 1, 4 / 5, 7 / 5, 9 / 5, 4 / 10] },
+            { id: 10, info: "5/4-U", hasRod: false, ratios: [5 / 4, 1 / 1, 5 / 3, 10 / 7, 12 / 9, 20 / 11] },
+            { id: 11, info: "1/1-O", hasRod: true, ratios: [1 / 1, 5 / 4, 3 / 2, 7 / 4, 7 / 8, 3 / 2] },
+            { id: 12, info: "3/2-U", hasRod: true, ratios: [6 / 5, 3 / 2, 12 / 7, 1 / 1, 6 / 5, 3 / 2] }
+        ];
+
+        let CURRENT_STRINGS = [];
+
+        function loadInstrument(mode) {
+            currentMode = mode;
+            CURRENT_STRINGS = [];
+
+            const btn = document.getElementById('swap-btn');
+            const nav = document.getElementById('hexad-nav');
+            const dispL = document.getElementById('ratio-left');
+            const dispR = document.getElementById('ratio-right');
+            const dispC = document.getElementById('ratio-center');
+            const lblL = document.getElementById('label-left');
+            const lblR = document.getElementById('label-right');
+            const lblC = document.getElementById('label-center');
+
+            if (mode === 'SURROGATE') {
+                SURROGATE_ALPHA.forEach(r => CURRENT_STRINGS.push({ freq: BASE_FREQ * r, type: 'surrogate', side: 'left' }));
+                SURROGATE_BETA.forEach(r => CURRENT_STRINGS.push({ freq: BASE_FREQ * r, type: 'surrogate', side: 'right' }));
+
+                btn.innerText = "SURROGATE";
+                nav.style.display = 'none';
+                lblL.style.opacity = 0.5; lblR.style.opacity = 0.5; lblC.style.opacity = 0;
+                dispL.style.display = 'block'; dispR.style.display = 'block'; dispC.style.display = 'none';
+
+            } else {
+                loadHexadStrings(currentHexadIdx);
+                btn.innerText = "KITHARA I";
+                nav.style.display = 'flex';
+                updateHexadDisplay();
+
+                lblL.style.opacity = 0; lblR.style.opacity = 0; lblC.style.opacity = 0.8;
+                dispL.style.display = 'none'; dispR.style.display = 'none'; dispC.style.display = 'block';
+            }
+        }
+
+        function loadHexadStrings(idx) {
+            if (currentMode !== 'KITHARA_I') return;
+            CURRENT_STRINGS = [];
+            const hexad = KITHARA_HEXADS[idx];
+            hexad.ratios.forEach(r => {
+                CURRENT_STRINGS.push({ freq: BASE_FREQ * r, type: 'kithara1', hasRod: hexad.hasRod });
+            });
+        }
+
+        function updateHexadDisplay() {
+            const el = document.getElementById('hexad-display');
+            const h = KITHARA_HEXADS[currentHexadIdx];
+            el.innerText = `HEXAD ${h.id} (${h.info})`;
+            const dispC = document.getElementById('ratio-center');
+            if (h.hasRod) { dispC.style.display = 'block'; } else { dispC.style.display = 'none'; }
+        }
+
+        window.onload = () => {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+
+            document.getElementById('init-btn').addEventListener('click', () => { initAudio(); });
+            document.getElementById('swap-btn').addEventListener('click', () => {
+                const next = currentMode === 'SURROGATE' ? 'KITHARA_I' : 'SURROGATE';
+                loadInstrument(next);
+            });
+
+            document.getElementById('prev-hex-btn').addEventListener('click', () => {
+                currentHexadIdx = (currentHexadIdx > 0) ? currentHexadIdx - 1 : 11;
+                loadHexadStrings(currentHexadIdx); updateHexadDisplay();
+            });
+            document.getElementById('next-hex-btn').addEventListener('click', () => {
+                currentHexadIdx = (currentHexadIdx < 11) ? currentHexadIdx + 1 : 0;
+                loadHexadStrings(currentHexadIdx); updateHexadDisplay();
+            });
+
+            window.addEventListener('resize', resize);
+
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+            canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+            canvas.addEventListener('mousedown', handleMouseDown);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+
+            loadInstrument('SURROGATE');
+            resize();
+
+            // Toggle collapsible header extras
+            document.getElementById('toggle-header').onclick = () => {
+                const extras = document.getElementById('collapsible-header');
+                extras.classList.toggle('hidden');
+                const btn = document.getElementById('toggle-header');
+                btn.innerText = extras.classList.contains('hidden') ? 'Show' : 'Hide';
+            };
+        };
+
+        function resize() {
+            if (!canvas) return;
+            const container = document.getElementById('instrument-container');
+            width = canvas.width = container.clientWidth;
+            height = canvas.height = container.clientHeight;
+        }
+
+        function initAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.setValueAtTime(-15, audioCtx.currentTime);
+            compressor.knee.setValueAtTime(30, audioCtx.currentTime);
+            compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+            compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+            compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.8;
+
+            compressor.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            document.getElementById('start-overlay').style.display = 'none';
+
+            // Reveal UI
+            document.getElementById('collapsible-header').classList.remove('init-hidden');
+            document.getElementById('hide-btn-container').classList.remove('init-hidden');
+
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            requestAnimationFrame(animate);
+        }
+
+        function makePickNoiseBuffer(ctx, seconds = 0.05) {
+            const n = Math.max(32, Math.floor(ctx.sampleRate * seconds));
+            const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < n; i++) { d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / (n - 1), 2); }
+            return buf;
+        }
+
+        function pluckKitharaString(ctx, destination, freq, ratio, type, side, velocity = 0.5) {
+            const t0 = ctx.currentTime;
+            const f = freq * ratio;
+            const gain = ctx.createGain();
+
+            gain.gain.setValueAtTime(0, t0);
+            gain.gain.linearRampToValueAtTime(0.2 + velocity * 0.4, t0 + 0.005);
+
+            let decay, bodyFreq, bodyGain, bodyQ;
+
+            if (type === 'surrogate') {
+                decay = 1.3;
+                bodyFreq = 480;
+                bodyGain = 4;
+                bodyQ = 0.6;
+            } else {
+                decay = 2.5;
+                bodyFreq = 180; bodyGain = 6; bodyQ = 1.0;
+            }
+
+            gain.gain.exponentialRampToValueAtTime(0.001, t0 + decay);
+
+            const osc1 = ctx.createOscillator(); osc1.type = 'sawtooth';
+            const osc2 = ctx.createOscillator(); osc2.type = 'triangle';
+            osc1.frequency.value = f; osc2.frequency.value = f; osc2.detune.value = 3;
+
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            const initialFilterFreq = f * (4 + velocity * 12);
+            filter.frequency.value = initialFilterFreq;
+            filter.Q.value = 1 + velocity * 4;
+            filter.frequency.exponentialRampToValueAtTime(f * 2, t0 + 0.2);
+
+            const body = ctx.createBiquadFilter();
+            body.type = 'peaking'; body.frequency.value = bodyFreq; body.gain.value = bodyGain; body.Q.value = bodyQ;
+
+            const noise = ctx.createBufferSource();
+            noise.buffer = makePickNoiseBuffer(ctx);
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.value = 0.2;
+
+            osc1.connect(filter); osc2.connect(filter);
+            filter.connect(gain); noise.connect(noiseGain); noiseGain.connect(gain);
+            gain.connect(body); body.connect(compressor);
+
+            osc1.start(t0); osc2.start(t0); noise.start(t0);
+            osc1.stop(t0 + decay + 0.5); osc2.stop(t0 + decay + 0.5);
+
+            const voiceObj = { oscList: [osc1, osc2], baseFreq: freq, type: type, side: side, hasRod: (type === 'kithara1' && KITHARA_HEXADS[currentHexadIdx].hasRod) };
+            activeVoices.push(voiceObj);
+            setTimeout(() => {
+                const idx = activeVoices.indexOf(voiceObj);
+                if (idx > -1) activeVoices.splice(idx, 1);
+            }, decay * 1000);
+        }
+
+        function calculateRatio(py) {
+            let closestDist = Infinity;
+            let closestIdx = -1;
+
+            scaleMap.forEach((item, index) => {
+                const targetY = (index / (scaleMap.length - 1)) * height;
+                const dist = Math.abs(py - targetY);
+                const threshold = item.custom ? SNAP_THRESHOLD * 1.5 : SNAP_THRESHOLD;
+                if (dist < threshold && dist < closestDist) { closestDist = dist; closestIdx = index; }
+            });
+
+            if (closestIdx !== -1) {
+                const item = scaleMap[closestIdx];
+                return { ratio: item.r, isSnapped: true, snappedY: (closestIdx / (scaleMap.length - 1)) * height, display: item.customLabel || item.label };
+            } else {
+                const ratioIdxFloat = (py / height) * (scaleMap.length - 1);
+                const idxFloor = Math.floor(ratioIdxFloat);
+                const r1 = scaleMap[Math.max(0, idxFloor)];
+                const r2 = scaleMap[Math.min(scaleMap.length - 1, idxFloor + 1)];
+                const pct = ratioIdxFloat - idxFloor;
+                let r = 1.0; if (r1 && r2) r = r1.r + (r2.r - r1.r) * pct;
+                return { ratio: r, isSnapped: false, snappedY: py, display: r.toFixed(3) };
+            }
+        }
+
+        function updateSlideStates() {
+            let leftInputs = [], rightInputs = [];
+            if (isMouseDown) {
+                if (currentMode === 'SURROGATE') {
+                    if (rawMouseX < width / 2) leftInputs.push(rawMouseY); else rightInputs.push(rawMouseY);
+                } else { leftInputs.push(rawMouseY); }
+            }
+            activeTouches.forEach(t => {
+                if (currentMode === 'SURROGATE') {
+                    if (t.x < width / 2) leftInputs.push(t.y); else rightInputs.push(t.y);
+                } else { leftInputs.push(t.y); }
+            });
+
+            if (leftInputs.length > 0) {
+                const y = leftInputs[leftInputs.length - 1];
+                const res = calculateRatio(y);
+                if (currentMode === 'SURROGATE') {
+                    slideLeft = { y: res.snappedY || y, ratio: res.ratio, isSnapped: res.isSnapped };
+                    updateDisplay('ratio-left', res, 'left');
+                } else {
+                    slideGlobal = { y: res.snappedY || y, ratio: res.ratio, isSnapped: res.isSnapped };
+                    updateDisplay('ratio-center', res, 'center');
+                }
+            }
+
+            if (currentMode === 'SURROGATE' && rightInputs.length > 0) {
+                const y = rightInputs[rightInputs.length - 1];
+                const res = calculateRatio(y);
+                slideRight = { y: res.snappedY || y, ratio: res.ratio, isSnapped: res.isSnapped };
+                updateDisplay('ratio-right', res, 'right');
+            }
+
+            updateVoicesPitch();
+        }
+
+        function updateDisplay(id, res, side) {
+            const el = document.getElementById(id);
+            el.innerText = res.display;
+            if (res.isSnapped) el.classList.add('locked'); else el.classList.remove('locked');
+        }
+
+        function updateVoicesPitch() {
+            if (activeVoices.length === 0) return;
+            const t = audioCtx.currentTime;
+            activeVoices.forEach(voice => {
+                if (voice.type === 'kithara1' && !voice.hasRod) return;
+                let targetRatio = 1.0;
+                if (currentMode === 'SURROGATE') {
+                    targetRatio = (voice.side === 'left') ? slideLeft.ratio : slideRight.ratio;
+                } else {
+                    targetRatio = slideGlobal.ratio;
+                }
+                voice.oscList.forEach(osc => {
+                    osc.frequency.setTargetAtTime(voice.baseFreq * targetRatio, t, 0.05);
+                });
+            });
+        }
+
+        function getStringLayout() {
+            if (currentMode === 'SURROGATE') {
+                const gapSize = 30; const bankWidth = (width - gapSize) / 2; const stringSpacing = bankWidth / 8;
+                return { mode: 'split', gap: gapSize, spacing: stringSpacing, count: 16 };
+            } else {
+                const totalWidth = Math.min(width * 0.75, 400);
+                const stringSpacing = totalWidth / 5;
+                return { mode: 'center', width: totalWidth, spacing: stringSpacing, count: 6 };
+            }
+        }
+
+        function checkTrigger(x, y, touchId) {
+            const layout = getStringLayout();
+            let strIdx = -1;
+
+            if (layout.mode === 'split') {
+                if (x < width / 2 - layout.gap / 2) {
+                    strIdx = Math.floor(x / layout.spacing);
+                    if (strIdx > 7) strIdx = 7;
+                } else if (x > width / 2 + layout.gap / 2) {
+                    let localX = x - (width / 2 + layout.gap / 2);
+                    strIdx = 8 + Math.floor(localX / layout.spacing);
+                    if (strIdx > 15) strIdx = 15;
+                }
+            } else {
+                const startX = (width - layout.width) / 2;
+                for (let i = 0; i < 6; i++) {
+                    const sx = startX + (i * layout.spacing);
+                    if (Math.abs(x - sx) < layout.spacing * 0.4) { strIdx = i; break; }
+                }
+            }
+
+            let lastIdx = (touchId === -1) ? lastTriggeredStringIndex : (activeTouches.get(touchId)?.lastStr ?? -1);
+
+            if (strIdx >= 0 && strIdx < CURRENT_STRINGS.length && strIdx !== lastIdx) {
+                let visualX;
+                if (layout.mode === 'split') {
+                    if (strIdx < 8) visualX = (strIdx * layout.spacing) + (layout.spacing / 2);
+                    else visualX = (width / 2 + layout.gap / 2) + ((strIdx - 8) * layout.spacing) + (layout.spacing / 2);
+                } else {
+                    const startX = (width - layout.width) / 2;
+                    visualX = startX + (strIdx * layout.spacing);
+                }
+
+                const stringData = CURRENT_STRINGS[strIdx];
+                let r = 1.0;
+                if (currentMode === 'SURROGATE') {
+                    r = (stringData.side === 'left') ? slideLeft.ratio : slideRight.ratio;
+                } else {
+                    if (stringData.hasRod) r = slideGlobal.ratio;
+                }
+
+                if (audioCtx && audioCtx.state === 'running') {
+                    const velocity = 0.6;
+                    pluckKitharaString(audioCtx, masterGain, stringData.freq, r, stringData.type, stringData.side, velocity);
+                }
+
+                let pColor = '#fff';
+                pulses.push({ x: visualX, life: 1, color: pColor, w: 4 });
+
+                if (touchId === -1) lastTriggeredStringIndex = strIdx;
+                else if (activeTouches.has(touchId)) activeTouches.get(touchId).lastStr = strIdx;
+            }
+        }
+
+        function getLocalCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+        function handleMouseDown(e) { isMouseDown = true; const pos = getLocalCoords(e); rawMouseX = pos.x; rawMouseY = pos.y; updateSlideStates(); checkTrigger(pos.x, pos.y, -1); }
+        function handleMouseUp() { isMouseDown = false; lastTriggeredStringIndex = -1; updateSlideStates(); }
+        function handleMouseMove(e) { if (!canvas) return; const pos = getLocalCoords(e); rawMouseX = pos.x; rawMouseY = pos.y; updateSlideStates(); if (isMouseDown) checkTrigger(pos.x, pos.y, -1); }
+        function handleTouchStart(e) { e.preventDefault(); const rect = canvas.getBoundingClientRect(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; const tx = t.clientX - rect.left; const ty = t.clientY - rect.top; activeTouches.set(t.identifier, { x: tx, y: ty, lastStr: -1 }); checkTrigger(tx, ty, t.identifier); } updateSlideStates(); }
+        function handleTouchMove(e) { e.preventDefault(); const rect = canvas.getBoundingClientRect(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; const touchData = activeTouches.get(t.identifier); if (touchData) { const tx = t.clientX - rect.left; const ty = t.clientY - rect.top; touchData.x = tx; touchData.y = ty; checkTrigger(tx, ty, t.identifier); } } updateSlideStates(); }
+        function handleTouchEnd(e) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { activeTouches.delete(e.changedTouches[i].identifier); } updateSlideStates(); }
+
+        function drawGrid() {
+            const step = height / (scaleMap.length - 1);
+            scaleMap.forEach((item, index) => {
+                const y = index * step;
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y);
+                if (item.custom) { ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1; }
+                else if (item.main) { ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1; }
+                else { ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'; ctx.lineWidth = 0.5; }
+                ctx.stroke();
+
+                ctx.font = width < 400 ? '9px Josefin Sans' : '11px Josefin Sans';
+                if (item.custom) {
+                    ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.fillText(item.customLabel, 8, y + 3);
+                } else if (item.label) {
+                    ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.fillText(item.label, width - 25, y + 3);
+                }
+            });
+        }
+
+        function drawStrings() {
+            const layout = getStringLayout();
+            for (let i = 0; i < layout.count; i++) {
+                let centerX; let widthBar;
+                if (layout.mode === 'split') {
+                    if (i < 8) centerX = (i * layout.spacing) + (layout.spacing / 2);
+                    else centerX = (width / 2 + layout.gap / 2) + ((i - 8) * layout.spacing) + (layout.spacing / 2);
+                    widthBar = layout.spacing / 1.5;
+                } else {
+                    const startX = (width - layout.width) / 2;
+                    centerX = startX + (i * layout.spacing);
+                    widthBar = layout.spacing / 3;
+                }
+                let highlight = false;
+                activeTouches.forEach(t => { if (Math.abs(t.x - centerX) < (widthBar * 0.8)) highlight = true; });
+
+                if (highlight) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.fillRect(centerX - widthBar / 2, 0, widthBar, height);
+                }
+                ctx.beginPath(); ctx.moveTo(centerX, 0); ctx.lineTo(centerX, height);
+                ctx.strokeStyle = highlight ? '#fff' : '#333'; ctx.lineWidth = highlight ? 3 : 2;
+                ctx.stroke();
+            }
+            if (layout.mode === 'split') {
+                ctx.fillStyle = '#000'; ctx.fillRect(width / 2 - layout.gap / 2, 0, layout.gap, height);
+                ctx.beginPath(); ctx.moveTo(width / 2, 0); ctx.lineTo(width / 2, height);
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+            }
+        }
+
+        function drawPulses() {
+            for (let i = pulses.length - 1; i >= 0; i--) {
+                let p = pulses[i];
+                ctx.shadowBlur = 15 * p.life; ctx.shadowColor = p.color; ctx.strokeStyle = `rgba(255, 255, 255, ${p.life})`; ctx.lineWidth = p.w ? p.w : 3;
+                ctx.beginPath(); ctx.moveTo(p.x, 0);
+                for (let y = 0; y <= height; y += 30) { ctx.lineTo(p.x + (Math.random() - 0.5) * 10 * p.life, y); }
+                ctx.lineTo(p.x, height); ctx.stroke();
+                ctx.shadowBlur = 0; p.life -= 0.04; if (p.life <= 0) pulses.splice(i, 1);
+            }
+        }
+
+        function drawRod(y, xStart, xEnd, snapped) {
+            const barHeight = 22;
+            const rodColor = snapped ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+            ctx.save();
+            ctx.fillStyle = rodColor; ctx.fillRect(xStart, y - barHeight / 2, xEnd - xStart, barHeight);
+            ctx.beginPath(); ctx.moveTo(xStart, y); ctx.lineTo(xEnd, y);
+            ctx.strokeStyle = snapped ? '#fff' : 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawSlides() {
+            if (currentMode === 'SURROGATE') {
+                const gapSize = 30;
+                drawRod(slideLeft.y, 0, width / 2 - gapSize / 2, slideLeft.isSnapped);
+                drawRod(slideRight.y, width / 2 + gapSize / 2, width, slideRight.isSnapped);
+            } else {
+                if (KITHARA_HEXADS[currentHexadIdx].hasRod) {
+                    drawRod(slideGlobal.y, 0, width, slideGlobal.isSnapped);
+                }
+            }
+            ctx.fillStyle = '#fff';
+            activeTouches.forEach(t => { ctx.beginPath(); ctx.arc(t.x, t.y, 8, 0, Math.PI * 2); ctx.fill(); });
+        }
+
+        function animate() {
+            if (!ctx) return;
+            ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, width, height);
+            drawGrid(); drawStrings(); drawPulses(); drawSlides();
+            requestAnimationFrame(animate);
+        }
+    </script>
+
+    <!-- MIDI Integration (unchanged) -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!audioCtx) return;
+
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (data.note / 127) * rect.width;
+                    const velocity = data.velocity / 127;
+
+                    const layout = getStringLayout();
+                    let strIdx = -1;
+                    if (layout.mode === 'split') {
+                        if (x < rect.width / 2 - layout.gap / 2) {
+                            strIdx = Math.floor(x / layout.spacing);
+                            if (strIdx > 7) strIdx = 7;
+                        } else if (x > rect.width / 2 + layout.gap / 2) {
+                            let localX = x - (rect.width / 2 + layout.gap / 2);
+                            strIdx = 8 + Math.floor(localX / layout.spacing);
+                            if (strIdx > 15) strIdx = 15;
+                        }
+                    } else {
+                        const startX = (rect.width - layout.width) / 2;
+                        for (let i = 0; i < 6; i++) {
+                            const sx = startX + (i * layout.spacing);
+                            if (Math.abs(x - sx) < layout.spacing * 0.4) { strIdx = i; break; }
+                        }
+                    }
+
+                    if (strIdx >= 0 && strIdx < CURRENT_STRINGS.length) {
+                        const stringData = CURRENT_STRINGS[strIdx];
+                        let r = 1.0;
+                        if (currentMode === 'SURROGATE') {
+                            r = (stringData.side === 'left') ? slideLeft.ratio : slideRight.ratio;
+                        } else {
+                            if (stringData.hasRod) r = slideGlobal.ratio;
+                        }
+
+                        pluckKitharaString(audioCtx, masterGain, stringData.freq, r, stringData.type, stringData.side, velocity);
+
+                        let visualX;
+                        if (layout.mode === 'split') {
+                            if (strIdx < 8) visualX = (strIdx * layout.spacing) + (layout.spacing / 2);
+                            else visualX = (rect.width / 2 + layout.gap / 2) + ((strIdx - 8) * layout.spacing) + (layout.spacing / 2);
+                        } else {
+                            const startX = (rect.width - layout.width) / 2;
+                            visualX = startX + (strIdx * layout.spacing);
+                        }
+                        pulses.push({ x: visualX, life: 1, color: '#fff', w: 4 });
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    const noteId = "midi_" + data.note;
+                    const mockEvent = { pointerId: noteId, preventDefault: () => { } };
+                    if (window.handlePointerUp) window.handlePointerUp(mockEvent);
+                    else if (window.handleEnd) window.handleEnd(noteId);
+                    else if (window.stopAudio) window.stopAudio();
+                });
+
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) {
+                        const master = window.masterGain || (window.Tone && window.Tone.Destination);
+                        if (master) {
+                            const node = master.gain || master;
+                            if (node && node.setTargetAtTime) {
+                                node.setTargetAtTime(data.value / 127, 0, 0.05);
+                            }
+                        }
+                    }
+                });
+            });
+        })();
+
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            while (next === 'sceacel') next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
+        }
+    </script>
+    <!-- /MIDI Integration -->
+
+</body>
+
+</html>

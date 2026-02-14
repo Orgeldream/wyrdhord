@@ -14,6 +14,12 @@
             --font-family: 'Josefin Sans', sans-serif;
         }
 
+        .init-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 1.5s ease;
+        }
+
         body,
         html {
             margin: 0;
@@ -25,7 +31,7 @@
             font-family: var(--font-family);
             overflow: hidden;
             touch-action: none;
-            
+
         }
 
         #app {
@@ -45,7 +51,7 @@
             height: 100%;
             z-index: 1;
             pointer-events: none;
-            
+
         }
 
         #ui-layer {
@@ -56,10 +62,9 @@
             height: 100%;
             z-index: 10;
             pointer-events: none;
-            
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-end;
             padding: 20px;
             box-sizing: border-box;
         }
@@ -106,11 +111,97 @@
             }
         }
 
-        .top-controls {
-            width: 100%;
+        #loading-text {
+            font-size: 14px;
+            margin-top: 20px;
+            color: #888;
+            display: none;
+        }
+
+        /* Persistent M/R buttons (centered) */
+        #persistent-nav {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            justify-content: center;
+            flex-direction: row;
+            gap: 12px;
+            z-index: 10000;
             pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-family);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        /* Title (left) – hidden initially */
+        .title-block {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            text-align: left;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.8;
+        }
+
+        .title-main {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+        }
+
+        .title-sub {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #444;
+        }
+
+        /* LOAD AUDIO button (right) – hidden initially */
+        #file-trigger {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            cursor: pointer;
+            font-size: 10px;
+            letter-spacing: 2px;
+            border: 1px solid #333;
+            padding: 8px 16px;
+            border-radius: 15px;
+            pointer-events: auto;
+            z-index: 10000;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+        }
+
+        #file-trigger:hover {
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .bottom-controls {
@@ -120,10 +211,9 @@
             align-items: center;
             gap: 10px;
             pointer-events: auto;
-            margin-bottom: 20px;
+            margin-bottom: 0;
         }
 
-        
         .pattern-indicator {
             display: flex;
             gap: 4px;
@@ -143,7 +233,6 @@
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        
         .slider-container {
             width: 80%;
             max-width: 300px;
@@ -176,7 +265,6 @@
             background: var(--fg-color);
             cursor: pointer;
             margin-top: -5px;
-            
         }
 
         input[type="range"]::-webkit-slider-runnable-track {
@@ -186,7 +274,6 @@
             background: #333;
         }
 
-        
         #touch-marker {
             position: absolute;
             width: 60px;
@@ -221,29 +308,36 @@
 <body>
     <div id="init-overlay">
         <div id="init-text">Touch to Initialise</div>
-        <div id="loading-text" style="display:none; font-size: 14px; margin-top: 20px; color: #888;">Processing Audio...
-        </div>
+        <div id="loading-text">Processing Audio...</div>
     </div>
 
     <input type="file" id="file-input" accept="audio/*" style="display: none;">
 
+    <!-- Persistent M/R buttons (centered) -->
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
+
+    <!-- LOAD AUDIO button (right) – hidden initially -->
+    <div id="file-trigger" class="init-hidden">LOAD AUDIO</div>
+
     <div id="app">
+        <!-- Title (left) – hidden initially -->
+        <div class="title-block init-hidden">
+            <div class="title-main">TOCNYSSAN</div>
+            <div class="title-sub">TOUCH RHYTHM SYNTHESISER</div>
+        </div>
+
         <canvas id="visualizer"></canvas>
         <div id="touch-marker"></div>
 
-        <div id="ui-layer">
-            <div class="top-controls">
+        <!-- Bottom controls – hidden initially -->
+        <div id="ui-layer" class="init-hidden">
+            <div class="bottom-controls">
                 <div class="pattern-indicator" id="pattern-indicator">
                     <!-- Dots generated by JS -->
                 </div>
-            </div>
-
-            <div id="file-trigger"
-                style="position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 10px; letter-spacing: 2px; border: 1px solid #333; padding: 5px 10px; border-radius: 15px; pointer-events: auto;">
-                LOAD SAMPLE
-            </div>
-
-            <div class="bottom-controls">
                 <div class="slider-container">
                     <label for="bpm">TEMPO <span id="bpm-val">120</span></label>
                     <input type="range" id="bpm" min="60" max="200" step="1" value="120">
@@ -269,34 +363,65 @@
         let nextNoteTime = 0.0;
         let lookahead = 25.0;
         let scheduleAheadTime = 0.1;
-        let noteCount = 0; 
+        let noteCount = 0;
 
         let bpm = 120;
 
-        let density = 0;      
-        let quantize = 0;     
-        let filterFreq = 100; 
+        let density = 90;
+        let quantize = 0;
+        let filterFreq = 100;
         let filterQ = 0.001;
         let stereoWidth = 0;
         let panVal = 0;
 
-        let currentRate = 16; 
-        let rateDivider = 4;  
+        let currentRate = 16;
+        let rateDivider = 4;
         let currentFilterType = 'bandpass';
 
+        // Function to reveal UI elements after initialisation
+        function revealUI() {
+            document.querySelector('.title-block').classList.remove('init-hidden');
+            document.getElementById('file-trigger').classList.remove('init-hidden');
+            document.getElementById('ui-layer').classList.remove('init-hidden');
+        }
+
+        // Ensure audio graph is set up
+        async function initAudio() {
+            if (audioCtx) return;
+
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                panner = audioCtx.createStereoPanner();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0;
+
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.8;
+
+                panner.connect(masterGain);
+                masterGain.connect(analyser);
+                analyser.connect(audioCtx.destination);
+
+                console.log('Audio initialized');
+            } catch (e) {
+                console.error('Audio init failed', e);
+            }
+        }
 
         function findTransients(buffer) {
-            const channelData = buffer.getChannelData(0); 
+            const channelData = buffer.getChannelData(0);
             const sampleRate = buffer.sampleRate;
             const foundTransients = [];
 
-            const windowSize = Math.floor(sampleRate * 0.01); 
-            let energyHistory = new Float32Array(100); 
+            const windowSize = Math.floor(sampleRate * 0.01);
+            let energyHistory = new Float32Array(100);
             let historyIndex = 0;
 
-            const sensitivity = 1.5; 
+            const sensitivity = 1.5;
             const silenceThresh = 0.01;
-            const minDistance = Math.floor(sampleRate * 0.05); 
+            const minDistance = Math.floor(sampleRate * 0.05);
 
             let lastTransient = -minDistance;
 
@@ -333,19 +458,17 @@
         const fileInput = document.getElementById('file-input');
         const fileTrigger = document.getElementById('file-trigger');
         const loadingText = document.getElementById('loading-text');
+        const initOverlay = document.getElementById('init-overlay');
+        const initText = document.getElementById('init-text');
 
-        fileTrigger.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', async (e) => {
-            if (e.target.files.length === 0) return;
-            const file = e.target.files[0];
+        async function loadAudioFileFromBlob(file) {
+            await initAudio(); // ensure context exists
 
             loadingText.style.display = 'block';
+            initText.style.display = 'none';
             loadingText.textContent = "Decoding " + file.name + "...";
-            initOverlay.classList.remove('hidden'); 
 
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const arrayBuffer = await file.arrayBuffer();
                 const decodedAudio = await audioCtx.decodeAudioData(arrayBuffer);
 
@@ -357,25 +480,61 @@
                     console.log("Found " + transients.length + " transients");
 
                     loadingText.style.display = 'none';
-                    initOverlay.classList.add('hidden'); 
+                    initText.style.display = 'block';
+                    initOverlay.classList.add('hidden');
+
+                    // Reveal UI after file is loaded
+                    revealUI();
 
                     if (!isPlaying) {
                         isPlaying = true;
                         nextNoteTime = audioCtx.currentTime;
                         scheduler();
                     }
-
-                    fileTrigger.textContent = file.name.substring(0, 15) + (file.name.length > 15 ? '...' : '');
-                    fileTrigger.style.borderColor = '#fff';
                 }, 100);
 
             } catch (err) {
                 console.error("Error loading file:", err);
-                loadingText.textContent = "Error loading file.";
+                loadingText.textContent = "Error loading file. Touch to retry.";
+                // Allow retry by clicking overlay again
+            }
+        }
+
+        fileTrigger.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            if (e.target.files.length === 0) return;
+            const file = e.target.files[0];
+            await loadAudioFileFromBlob(file);
+        });
+
+        // Load default file only after user clicks the overlay
+        initOverlay.addEventListener('click', async () => {
+            // If already hidden, do nothing
+            if (initOverlay.classList.contains('hidden')) return;
+
+            // Show loading text
+            loadingText.style.display = 'block';
+            initText.style.display = 'none';
+
+            await initAudio();
+
+            // Attempt to load default Beat.wav
+            try {
+                const response = await fetch('../Audiofiles/Beat.wav');
+                if (!response.ok) throw new Error('File not found');
+                const blob = await response.blob();
+                const file = new File([blob], 'Beat.wav', { type: blob.type || 'audio/wav' });
+                await loadAudioFileFromBlob(file); // this will hide overlay and reveal UI when done
+            } catch (e) {
+                console.warn('Could not load default Beat.wav', e);
+                loadingText.textContent = "No default file. Please LOAD AUDIO.";
+                // Keep overlay visible, but allow user to load a file manually
+                initText.style.display = 'block';
+                loadingText.style.display = 'none';
             }
         });
 
-        const initOverlay = document.getElementById('init-overlay');
         const bpmInput = document.getElementById('bpm');
         const bpmVal = document.getElementById('bpm-val');
         const patternIndicator = document.getElementById('pattern-indicator');
@@ -399,30 +558,6 @@
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-
-        async function initAudio() {
-            if (audioCtx) return;
-
-            try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-                panner = audioCtx.createStereoPanner();
-                masterGain = audioCtx.createGain();
-                masterGain.gain.value = 0; 
-
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 2048;
-                analyser.smoothingTimeConstant = 0.8;
-
-                panner.connect(masterGain);
-                masterGain.connect(analyser);
-                analyser.connect(audioCtx.destination);
-
-                console.log('Audio initialized');
-            } catch (e) {
-                console.error('Audio init failed', e);
-            }
-        }
 
         function nextNote() {
             const secondsPerBeat = 60.0 / bpm;
@@ -456,8 +591,7 @@
             source.buffer = audioBuffer;
 
             const filter = audioCtx.createBiquadFilter();
-            filter.type = currentFilterType; 
-
+            filter.type = currentFilterType;
 
             const freqRandom = 1.0 + (Math.random() * 0.2 - 0.1);
             filter.frequency.value = Math.max(20, Math.min(20000, filterFreq * freqRandom));
@@ -466,8 +600,8 @@
             const gainNode = audioCtx.createGain();
 
             gainNode.gain.setValueAtTime(0, time);
-            gainNode.gain.linearRampToValueAtTime(1.0, time + 0.005); 
-            gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration); 
+            gainNode.gain.linearRampToValueAtTime(1.0, time + 0.005);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
 
             const voicePanner = audioCtx.createStereoPanner();
 
@@ -485,9 +619,9 @@
             source.connect(filter);
             filter.connect(gainNode);
             gainNode.connect(voicePanner);
-            voicePanner.connect(panner); 
+            voicePanner.connect(panner);
 
-            source.start(time, startTime, duration + 0.1); 
+            source.start(time, startTime, duration + 0.1);
             source.stop(time + duration + 0.2);
 
             source.onended = () => {
@@ -509,7 +643,6 @@
             const rightValue = getPatternValue(noteCount, 'right');
 
             const densityNorm = density / 100;
-
 
             if (Math.random() < densityNorm * leftValue) {
                 playFragment(time, 'left');
@@ -549,8 +682,7 @@
             schedulerTimer = setTimeout(scheduler, lookahead);
         }
 
-
-        function updateParamsFromInput(x, y) {
+        function updateParamsFromInput(x, y, midiVelocity = null) {
             const centerX = 0.5;
             const centerY = 0.5;
 
@@ -558,19 +690,17 @@
             const dy = y - centerY;
 
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx); 
-
+            const angle = Math.atan2(dy, dx);
 
             if (dist < 0.25) {
-                rateDivider = 8; 
+                rateDivider = 8;
             } else if (dist < 0.45) {
-                rateDivider = 4; 
+                rateDivider = 4;
             } else if (dist < 0.55) {
-                rateDivider = 2; 
+                rateDivider = 2;
             } else {
-                rateDivider = 1; 
+                rateDivider = 1;
             }
-
 
             let paramPos = Math.min(dist / 0.5, 1.0);
 
@@ -590,9 +720,13 @@
                 currentFilterType = 'notch';
             }
 
-
             const angleNorm = (angle + Math.PI) / (2 * Math.PI);
-            filterFreq = 50 + (angleNorm * 10000);
+
+            if (midiVelocity !== null) {
+                filterFreq = 50 + (midiVelocity * 10000);
+            } else {
+                filterFreq = 50 + (angleNorm * 10000);
+            }
 
             if (rateDivider >= 4) {
                 filterQ = 0.005 + (Math.random() * 0.015);
@@ -606,34 +740,34 @@
             touchMarker.style.top = (y * 100) + '%';
 
             touchMarker.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-            touchMarker.style.fontSize = "10px";
-            touchMarker.style.textAlign = "center";
-            touchMarker.style.display = "flex";
-            touchMarker.style.justifyContent = "center";
-            touchMarker.style.alignItems = "center";
-            touchMarker.innerText = ''; 
         }
 
         function startInteraction(e) {
-            if (e.target.closest('#file-trigger') || e.target.closest('.bottom-controls') || e.target.closest('.top-controls')) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (e.target.closest('#file-trigger') || e.target.closest('.bottom-controls')) return;
 
-            isTouching = true;
-            touchMarker.classList.add('active');
+            // Ensure audio context and graph are ready
+            initAudio().then(() => {
+                // Reveal UI (title, load button, bottom controls)
+                revealUI();
 
-            if (masterGain) {
-                masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                masterGain.gain.setTargetAtTime(1.2, audioCtx.currentTime, 0.1);
-            }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
 
-            handleMove(e);
+                isTouching = true;
+                touchMarker.classList.add('active');
 
-            if (!isPlaying) {
-                isPlaying = true;
-                nextNoteTime = audioCtx.currentTime;
-                scheduler();
-            }
+                if (masterGain) {
+                    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    masterGain.gain.setTargetAtTime(1.2, audioCtx.currentTime, 0.1);
+                }
+
+                handleMove(e);
+
+                if (!isPlaying) {
+                    isPlaying = true;
+                    nextNoteTime = audioCtx.currentTime;
+                    scheduler();
+                }
+            });
         }
 
         function endInteraction() {
@@ -648,7 +782,7 @@
 
         function handleMove(e) {
             if (!isTouching) return;
-            if (e.target.closest('#file-trigger') || e.target.closest('.bottom-controls') || e.target.closest('.top-controls')) return;
+            if (e.target.closest('#file-trigger') || e.target.closest('.bottom-controls')) return;
             e.preventDefault();
 
             let clientX, clientY;
@@ -676,29 +810,14 @@
         app.addEventListener('touchmove', handleMove, { passive: false });
         app.addEventListener('touchend', endInteraction);
 
-        initOverlay.addEventListener('click', async () => {
-            await initAudio();
-
-            if (!audioBuffer) {
-                fileTrigger.style.backgroundColor = '#333';
-                setTimeout(() => fileTrigger.style.backgroundColor = 'transparent', 500);
-            }
-
-            initOverlay.classList.add('hidden');
-            isPlaying = true;
-            nextNoteTime = audioCtx.currentTime;
-            scheduler();
-        });
-
         bpmInput.addEventListener('input', (e) => {
             bpm = parseInt(e.target.value);
             bpmVal.textContent = bpm;
-            e.stopPropagation(); 
+            e.stopPropagation();
         });
 
         document.querySelector('.bottom-controls').addEventListener('mousedown', (e) => e.stopPropagation());
         document.querySelector('.bottom-controls').addEventListener('touchstart', (e) => e.stopPropagation());
-
 
         function draw() {
             requestAnimationFrame(draw);
@@ -708,24 +827,24 @@
             const dataArray = new Uint8Array(bufferLength);
             analyser.getByteTimeDomainData(dataArray);
 
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; 
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
-            const maxR = Math.min(cx, cy); 
+            const maxR = Math.min(cx, cy);
 
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             ctx.lineWidth = 1;
 
-            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.5, 0, Math.PI * 2); ctx.stroke(); 
-            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.9, 0, Math.PI * 2); ctx.stroke(); 
-            ctx.beginPath(); ctx.arc(cx, cy, maxR * 1.1, 0, Math.PI * 2); ctx.stroke(); 
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.5, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.9, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 1.1, 0, Math.PI * 2); ctx.stroke();
 
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR, cy); ctx.stroke(); 
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + maxR); ctx.stroke(); 
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - maxR, cy); ctx.stroke(); 
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - maxR); ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR, cy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + maxR); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - maxR, cy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - maxR); ctx.stroke();
 
             ctx.lineWidth = 2;
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
@@ -749,27 +868,77 @@
         draw();
 
     </script>
-    <div id="nav-buttons"
-        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
-        <button onclick="window.location.href='../index.html'"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
-    </div>
+
     <script>
-        function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
-            let random = apps[Math.floor(Math.random() * apps.length)];
-            while (window.location.href.includes(random)) {
-                 random = apps[Math.floor(Math.random() * apps.length)];
-            }
-            window.location.href = '../' + random + '/';
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            while (next === 'tocnyssan') next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
         }
     </script>
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (typeof initAudio !== 'function') return;
+                    if (!audioCtx) return; // Global rule: manual init
+
+                    const cx = 0.5;
+                    const cy = 0.5;
+
+                    const angle = (data.note / 127) * 2 * Math.PI;
+                    const velNorm = data.velocity / 127;
+                    const dist = velNorm * 0.5;
+
+                    const x = cx + Math.cos(angle) * dist;
+                    const y = cy + Math.sin(angle) * dist;
+
+                    isTouching = true;
+                    touchMarker.classList.add('active');
+
+                    if (masterGain) {
+                        masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                        masterGain.gain.setTargetAtTime(1.2, audioCtx.currentTime, 0.1);
+                    }
+
+                    updateParamsFromInput(x, y, velNorm);
+
+                    if (!isPlaying) {
+                        isPlaying = true;
+                        nextNoteTime = audioCtx.currentTime;
+                        scheduler();
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    endInteraction();
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        if (masterGain) {
+                            masterGain.gain.setTargetAtTime(data.value / 127, audioCtx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

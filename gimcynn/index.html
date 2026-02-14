@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GIMCYNN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #888888;
+            --border-color: #222222;
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100vw;
+            height: 100vh;
+            background: url('OrgelDream_circle_template.png') no-repeat center center;
+            background-size: 50%;
+            opacity: 0.1;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Nav Buttons */
+        #nav-buttons {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            gap: 10px;
+            transition: opacity 0.3s;
+        }
+
+        #nav-buttons.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+
+        .ui-layer.hidden {
+            opacity: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+        }
+
+        .title-block {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            opacity: 0.8;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 6px;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: opacity 0.3s;
+        }
+
+        #controls.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .control-group {
+            background: rgba(10, 10, 10, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 140px;
+            backdrop-filter: blur(8px);
+        }
+
+        .control-group label {
+            color: var(--accent-color);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .control-group input[type="number"],
+        .control-group select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+            color: #fff;
+            padding: 6px 8px;
+            font-size: 11px;
+            font-family: var(--font-main);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .control-group input[type="number"]:focus,
+        .control-group select:focus {
+            border-color: #666;
+        }
+
+        .control-group .value-display {
+            color: #fff;
+            font-size: 11px;
+            font-weight: 400;
+            text-align: right;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+            color: #666;
+            padding: 6px 12px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-family: var(--font-main);
+            letter-spacing: 1px;
+        }
+
+        .toggle-btn.active {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        #hide-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 11;
+            background: transparent;
+            border: none;
+            color: var(--accent-color);
+            font-size: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: var(--font-main);
+            padding: 10px;
+        }
+
+        #hide-controls:hover {
+            color: #fff;
+        }
+
+        #init-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #init-btn {
+            background: transparent;
+            border: 1px solid #fff;
+            border-radius: 4px;
+            color: #fff;
+            padding: 15px 40px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: var(--font-main);
+            font-weight: 600;
+        }
+
+        #init-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .init-text {
+            color: var(--accent-color);
+            font-size: 11px;
+            text-align: center;
+            max-width: 300px;
+            line-height: 1.6;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Vertical Slider Styling */
+        input[type="range"][orient="vertical"] {
+            writing-mode: bt-lr;
+            -webkit-appearance: slider-vertical;
+            appearance: slider-vertical;
+            width: 8px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            outline: none;
+            accent-color: #888;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="nav-buttons"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10000;">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="randomApp()">R</button>
+    </div>
+
+    <div class="ui-layer">
+        <div class="header">
+            <div class="title-block">
+                <div class="title">GIMCYNN</div>
+                <div class="subtitle">MICROTONAL SYNTHESISER</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="init-overlay">
+        <button id="init-btn">Initialise</button>
+        <div class="init-text">Diamond Marimba · 11-limit tonality diamond</div>
+    </div>
+
+    <button id="hide-controls">Hide</button>
+
+    <div id="controls">
+        <div class="control-group">
+            <label>Fundamental</label>
+            <input type="number" id="fundamental-input" value="392" min="98" max="784" step="1">
+            <div class="value-display"><span id="fund-display">392</span> Hz</div>
+        </div>
+        <div class="control-group">
+            <label>Mallet Type</label>
+            <select id="mallet-type"
+                style="background: transparent; border: 1px solid #333; color: #fff; padding: 4px; font-size: 12px;">
+                <option value="0">Hard // Synth</option>
+                <option value="1" selected>Medium</option>
+                <option value="2">Soft</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Resonance</label>
+            <button class="toggle-btn" id="resonance-toggle">OFF</button>
+        </div>
+        <div class="control-group">
+            <label>Float Mode</label>
+            <button class="toggle-btn" id="float-toggle">OFF</button>
+        </div>
+        <div class="control-group" id="speed-control" style="display: none;">
+            <label>Float Speed</label>
+            <div style="display: flex; justify-content: center; padding: 10px 0;">
+                <input type="range" id="float-speed" min="0" max="2" step="0.05" value="1" orient="vertical">
+            </div>
+            <div class="value-display"><span id="speed-display">1.0</span>x</div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════════
+        // DIAMOND MARIMBA TUNING - 11-limit Tonality Diamond
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        const diamondRatios = [
+            "1/1", "9/8", "5/4", "11/8", "3/2", "7/4", "2/1",
+            "16/9", "1/1", "10/9", "11/9", "4/3", "14/9", "16/9",
+            "8/5", "9/5", "1/1", "11/10", "6/5", "7/5", "8/5",
+            "16/11", "9/11", "10/11", "1/1", "12/11", "14/11", "16/11",
+            "4/3", "3/2", "5/3", "11/6", "1/1", "7/6", "4/3",
+            "8/7", "9/7", "10/7", "11/7", "12/7", "1/1", "8/7",
+            "1/1", "9/8", "5/4", "11/8", "3/2", "7/4", "2/1"
+        ];
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MALLET TYPES - Fixed soft mallet to be audible
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        const MALLET_TYPES = [
+            { // HARD MALLET - VERY BRIGHT, CLICKY, SHARP ATTACK
+                name: "Hard",
+                color: "#ffffff", // Pure White
+                noiseDuration: 0.05,
+                noiseBrightness: 1.0,
+                noiseCutoff: 5000,
+                attackTime: 0.001,
+                attackBoost: 2.0,
+                partialExcitation: [1.0, 0.9, 0.8, 0.7, 0.6],
+                clickStrength: 0.6,
+                highBoost: 8.0,
+                lowCut: 200,
+                sustainReduction: 0.5
+            },
+            { // MEDIUM MALLET - BALANCED
+                name: "Medium",
+                color: "#aaaaaa", // Light Grey
+                noiseDuration: 0.12,
+                noiseBrightness: 0.6,
+                noiseCutoff: 2500,
+                attackTime: 0.004,
+                attackBoost: 1.0,
+                partialExcitation: [1.0, 0.7, 0.5, 0.3, 0.2],
+                clickStrength: 0.3,
+                highBoost: 1.0,
+                lowCut: 100,
+                sustainReduction: 0.0
+            },
+            { // SOFT MALLET - FIXED TO BE AUDIBLE, WARM, DARK
+                name: "Soft",
+                color: "#555555", // Dark Grey
+                noiseDuration: 0.15,
+                noiseBrightness: 0.7, // Increased from 0.3 to 0.7
+                noiseCutoff: 1200, // Increased from 800 to 1200
+                attackTime: 0.008,
+                attackBoost: 1.2, // Increased from 0.5 to 1.2
+                partialExcitation: [1.0, 0.6, 0.4, 0.3, 0.2], // Increased excitation
+                clickStrength: 0.2,
+                highBoost: 0.8, // Reduced from 0.3 to 0.8 for more presence
+                lowBoost: 1.8,
+                lowCut: 60,
+                volumeBoost: 1.5 // Additional volume boost for soft mallet
+            }
+        ];
+
+        // Marimba physical model
+        const MARIMBA_PARTIALS = [
+            { ratio: 1.00, gain: 1.00, decay: 1.00, detune: 0.5, filter: 0 },
+            { ratio: 3.91, gain: 0.60, decay: 0.30, detune: 1.0, filter: 1000 },
+            { ratio: 6.27, gain: 0.30, decay: 0.15, detune: 1.5, filter: 1500 },
+            { ratio: 8.53, gain: 0.20, decay: 0.10, detune: 2.0, filter: 2000 },
+            { ratio: 10.79, gain: 0.10, decay: 0.07, detune: 2.5, filter: 2500 },
+        ];
+
+        // RESONANCE PARAMETERS - Default OFF
+        const RESONANCE_PARAMS = {
+            on: {
+                gain: 0.25,
+                duration: 3.0,
+                spread: 0.4,
+                feedback: 0.15,
+                harmonics: true,
+                sympathetics: 5
+            },
+            off: {
+                gain: 0.0, // Set to 0 for complete off
+                duration: 0.0,
+                spread: 0.0,
+                feedback: 0.0,
+                harmonics: false,
+                sympathetics: 0
+            }
+        };
+
+        let audioContext;
+        let masterGain;
+        let isInitialized = false;
+        let fundamental = 392;
+        let resonanceEnabled = false; // Default OFF
+        let floatModeEnabled = false; // Default OFF
+        let floatSpeed = 1.0;
+        let frequencies = [];
+        let barStates = [];
+        let diamondGeometry = [];
+        let currentMalletType = 1;
+
+        function initAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioContext.createGain();
+            masterGain.gain.value = 0.25;
+            masterGain.connect(audioContext.destination);
+            isInitialized = true;
+            calculateFrequencies();
+            initBarStates();
+        }
+
+        function calculateFrequencies() {
+            diamondGeometry = [];
+            frequencies = diamondRatios.map(ratio => {
+                const [n, d] = ratio.split("/").map(Number);
+                return fundamental * (n / d);
+            });
+
+            const rows = 7, cols = 7;
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    diamondGeometry.push({
+                        row,
+                        col,
+                        index: row * cols + col,
+                        ratio: diamondRatios[row * cols + col]
+                    });
+                }
+            }
+        }
+
+        function initBarStates() {
+            barStates = frequencies.map((freq, i) => ({
+                freq,
+                ratio: diamondRatios[i],
+                lastStrike: 0,
+                glowAmount: 0,
+                glowColor: "#ffffff",
+                position: diamondGeometry[i],
+                // Physics properties
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                targetX: 0,
+                targetY: 0,
+                size: 0
+            }));
+        }
+
+        // STRIKE WITH DISTINCT MALLET CHARACTERISTICS
+        function strikeBar(index, velocity = 1) {
+            if (!isInitialized || !frequencies[index]) return;
+
+            const now = audioContext.currentTime;
+            const baseFreq = frequencies[index];
+            const mallet = MALLET_TYPES[currentMalletType];
+
+            // Set visual color based on mallet type
+            barStates[index].glowColor = mallet.color;
+
+            // 1. MALLET-SPECIFIC WOODEN BAR RESONANCE
+            MARIMBA_PARTIALS.forEach((partial, i) => {
+                const freq = baseFreq * partial.ratio;
+                const osc = audioContext.createOscillator();
+
+                // Mallet-specific waveform
+                if (currentMalletType === 0) { // Hard - sawtooth for brightness
+                    osc.type = 'sawtooth';
+                } else if (currentMalletType === 2) { // Soft - sine for purity
+                    osc.type = 'sine';
+                } else { // Medium - triangle for warmth
+                    osc.type = 'triangle';
+                }
+
+                osc.frequency.value = freq;
+                osc.detune.value = (Math.random() - 0.5) * partial.detune * 2;
+
+                const env = audioContext.createGain();
+                const attackTime = mallet.attackTime;
+                const decayTime = (3.0 - currentMalletType * 1.0) * partial.decay;
+
+                // Apply volume boost for soft mallet
+                const volumeMultiplier = mallet.volumeBoost || 1.0;
+
+                env.gain.setValueAtTime(0, now);
+                env.gain.linearRampToValueAtTime(
+                    velocity * partial.gain * mallet.partialExcitation[i] * mallet.attackBoost * volumeMultiplier,
+                    now + attackTime
+                );
+                env.gain.exponentialRampToValueAtTime(
+                    velocity * partial.gain * mallet.partialExcitation[i] * 0.3 * volumeMultiplier,
+                    now + attackTime + decayTime * 0.2
+                );
+                env.gain.exponentialRampToValueAtTime(
+                    0.001,
+                    now + attackTime + decayTime * (1 - (mallet.sustainReduction || 0))
+                );
+
+                // Mallet-specific filtering
+                const filter = audioContext.createBiquadFilter();
+                filter.type = 'lowpass';
+
+                const baseCutoff = 800 + partial.filter + (velocity * 1000);
+                filter.frequency.value = baseCutoff * mallet.highBoost;
+
+                // Cut lows for hard mallets
+                if (currentMalletType === 0) {
+                    const highpass = audioContext.createBiquadFilter();
+                    highpass.type = 'highpass';
+                    highpass.frequency.value = mallet.lowCut;
+                    osc.connect(highpass);
+                    highpass.connect(filter);
+                } else {
+                    osc.connect(filter);
+                }
+
+                // Boost lows for soft mallets
+                if (currentMalletType === 2 && mallet.lowBoost) {
+                    const lowboost = audioContext.createBiquadFilter();
+                    lowboost.type = 'lowshelf';
+                    lowboost.frequency.value = 200;
+                    lowboost.gain.value = mallet.lowBoost * 6;
+                    filter.connect(lowboost);
+                    lowboost.connect(env);
+                } else {
+                    filter.connect(env);
+                }
+
+                filter.Q.value = 0.7 + (partial.ratio * 0.1);
+
+                env.connect(masterGain);
+
+                osc.start(now);
+                osc.stop(now + attackTime + decayTime + 0.3);
+            });
+
+            // 2. MALLET IMPACT
+            createMalletImpact(now, baseFreq, velocity, mallet);
+
+            // 3. MALLEI-SPECIFIC CLICK
+            if (mallet.clickStrength > 0) {
+                createMalletClick(now, velocity, mallet);
+            }
+
+            // 4. PRONOUNCED RESONANCE IF ENABLED
+            if (resonanceEnabled) {
+                createPronouncedResonance(now, baseFreq, velocity, index);
+            }
+
+            // Update visual state
+            barStates[index].lastStrike = Date.now();
+            barStates[index].glowAmount = 1;
+        }
+
+        function createMalletImpact(now, freq, velocity, mallet) {
+            const bufferSize = audioContext.sampleRate * mallet.noiseDuration;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            // Different noise types per mallet
+            if (currentMalletType === 0) { // Hard - sharp white noise
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.5);
+                }
+            } else if (currentMalletType === 1) { // Medium - pink noise
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520;
+                    b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.0168980;
+                    data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                    data[i] *= 0.11;
+                    b6 = white * 0.115926;
+                }
+            } else { // Soft - brown noise but boosted
+                let lastOut = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    lastOut = (lastOut + (0.02 * white)) / 1.02;
+                    data[i] = lastOut * 5.0; // Increased from 3.5 to 5.0
+                }
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const noiseEnv = audioContext.createGain();
+            noiseEnv.gain.setValueAtTime(0, now);
+            noiseEnv.gain.linearRampToValueAtTime(velocity * mallet.noiseBrightness, now + 0.001);
+            noiseEnv.gain.exponentialRampToValueAtTime(0.001, now + mallet.noiseDuration * 0.8);
+
+            // Different filtering per mallet
+            if (currentMalletType === 0) { // Hard - bandpass with high Q for click
+                const filter1 = audioContext.createBiquadFilter();
+                filter1.type = 'bandpass';
+                filter1.frequency.value = mallet.noiseCutoff;
+                filter1.Q.value = 3.0;
+
+                const filter2 = audioContext.createBiquadFilter();
+                filter2.type = 'highpass';
+                filter2.frequency.value = 1000;
+                filter2.Q.value = 0.7;
+
+                noise.connect(filter1);
+                filter1.connect(filter2);
+                filter2.connect(noiseEnv);
+            } else {
+                const noiseFilter = audioContext.createBiquadFilter();
+                noiseFilter.type = currentMalletType === 1 ? 'bandpass' : 'lowpass';
+                noiseFilter.frequency.value = mallet.noiseCutoff;
+                noiseFilter.Q.value = 1.0;
+
+                noise.connect(noiseFilter);
+                noiseFilter.connect(noiseEnv);
+            }
+
+            noiseEnv.connect(masterGain);
+            noise.start(now);
+            noise.stop(now + mallet.noiseDuration);
+        }
+
+        function createMalletClick(now, velocity, mallet) {
+            const clickOsc = audioContext.createOscillator();
+
+            if (currentMalletType === 0) { // Hard - high sine burst
+                clickOsc.type = 'sine';
+                clickOsc.frequency.value = 2000 + Math.random() * 2000;
+            } else if (currentMalletType === 1) { // Medium - triangle
+                clickOsc.type = 'triangle';
+                clickOsc.frequency.value = 800 + Math.random() * 800;
+            } else { // Soft - low sine
+                clickOsc.type = 'sine';
+                clickOsc.frequency.value = 300 + Math.random() * 200;
+            }
+
+            const clickEnv = audioContext.createGain();
+            clickEnv.gain.setValueAtTime(0, now);
+            clickEnv.gain.linearRampToValueAtTime(velocity * mallet.clickStrength, now + 0.001);
+            clickEnv.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+            clickOsc.connect(clickEnv);
+            clickEnv.connect(masterGain);
+
+            clickOsc.start(now);
+            clickOsc.stop(now + 0.03);
+        }
+
+        function createPronouncedResonance(now, freq, velocity, index) {
+            const params = RESONANCE_PARAMS.on;
+
+            // 1. STRONG FUNDAMENTAL RESONANCE
+            const fundOsc = audioContext.createOscillator();
+            fundOsc.type = 'sine';
+            fundOsc.frequency.value = freq;
+
+            const fundEnv = audioContext.createGain();
+            fundEnv.gain.setValueAtTime(0, now);
+            fundEnv.gain.linearRampToValueAtTime(velocity * params.gain, now + 0.1);
+            fundEnv.gain.exponentialRampToValueAtTime(0.001, now + params.duration);
+
+            // Add subtle vibrato to resonance
+            const vibrato = audioContext.createOscillator();
+            vibrato.frequency.value = 5 + Math.random() * 3;
+            const vibratoGain = audioContext.createGain();
+            vibratoGain.gain.value = 0.8;
+
+            vibrato.connect(vibratoGain);
+            vibratoGain.connect(fundOsc.frequency);
+
+            fundOsc.connect(fundEnv);
+            fundEnv.connect(masterGain);
+
+            fundOsc.start(now);
+            fundOsc.stop(now + params.duration);
+            vibrato.start(now);
+            vibrato.stop(now + params.duration);
+
+            // 2. HARMONIC RESONANCE IF ENABLED
+            if (params.harmonics) {
+                [2, 3, 4, 5].forEach(harmonic => {
+                    setTimeout(() => {
+                        const harmOsc = audioContext.createOscillator();
+                        harmOsc.type = 'sine';
+                        harmOsc.frequency.value = freq * harmonic;
+
+                        const harmEnv = audioContext.createGain();
+                        harmEnv.gain.setValueAtTime(0, audioContext.currentTime);
+                        harmEnv.gain.linearRampToValueAtTime(
+                            velocity * params.gain * (1 / harmonic),
+                            audioContext.currentTime + 0.15
+                        );
+                        harmEnv.gain.exponentialRampToValueAtTime(
+                            0.001,
+                            audioContext.currentTime + params.duration * 0.7
+                        );
+
+                        harmOsc.connect(harmEnv);
+                        harmEnv.connect(masterGain);
+
+                        harmOsc.start(audioContext.currentTime);
+                        harmOsc.stop(audioContext.currentTime + params.duration * 0.7);
+                    }, Math.random() * 100);
+                });
+            }
+
+            // 3. SYMPATHETIC BAR RESONANCE
+            for (let i = 0; i < params.sympathetics; i++) {
+                setTimeout(() => {
+                    const pos = diamondGeometry[index];
+                    const offsets = [
+                        { dr: -1, dc: 0 }, { dr: 1, dc: 0 },
+                        { dr: 0, dc: -1 }, { dr: 0, dc: 1 },
+                        { dr: -2, dc: 0 }, { dr: 2, dc: 0 },
+                        { dr: 0, dc: -2 }, { dr: 0, dc: 2 }
+                    ];
+
+                    const offset = offsets[Math.min(i, offsets.length - 1)];
+                    const adjRow = pos.row + offset.dr;
+                    const adjCol = pos.col + offset.dc;
+
+                    if (adjRow >= 0 && adjRow < 7 && adjCol >= 0 && adjCol < 7) {
+                        const adjIndex = adjRow * 7 + adjCol;
+                        const sympFreq = frequencies[adjIndex];
+
+                        const sympOsc = audioContext.createOscillator();
+                        sympOsc.type = 'sine';
+                        sympOsc.frequency.value = sympFreq * (1 + (Math.random() - 0.5) * params.spread);
+
+                        const sympEnv = audioContext.createGain();
+                        sympEnv.gain.setValueAtTime(0, audioContext.currentTime);
+                        sympEnv.gain.linearRampToValueAtTime(
+                            velocity * params.gain * 0.15,
+                            audioContext.currentTime + 0.2
+                        );
+                        sympEnv.gain.exponentialRampToValueAtTime(
+                            0.001,
+                            audioContext.currentTime + params.duration * 0.8
+                        );
+
+                        sympOsc.connect(sympEnv);
+                        sympEnv.connect(masterGain);
+
+                        sympOsc.start(audioContext.currentTime);
+                        sympOsc.stop(audioContext.currentTime + params.duration * 0.8);
+
+                        // Visual feedback for sympathetic resonance
+                        barStates[adjIndex].glowAmount = Math.max(barStates[adjIndex].glowAmount, 0.3);
+                        barStates[adjIndex].glowColor = "#ffffff";
+                    }
+                }, 100 + i * 80);
+            }
+
+            // 4. FEEDBACK RESONANCE (regenerative)
+            if (params.feedback > 0) {
+                setTimeout(() => {
+                    const feedbackOsc = audioContext.createOscillator();
+                    feedbackOsc.type = 'sine';
+                    feedbackOsc.frequency.value = freq * (1 + (Math.random() - 0.5) * params.spread * 0.5);
+
+                    const feedbackEnv = audioContext.createGain();
+                    feedbackEnv.gain.setValueAtTime(0, audioContext.currentTime);
+                    feedbackEnv.gain.linearRampToValueAtTime(
+                        velocity * params.gain * params.feedback,
+                        audioContext.currentTime + 0.3
+                    );
+                    feedbackEnv.gain.exponentialRampToValueAtTime(
+                        0.001,
+                        audioContext.currentTime + params.duration * 1.2
+                    );
+
+                    feedbackOsc.connect(feedbackEnv);
+                    feedbackEnv.connect(masterGain);
+
+                    feedbackOsc.start(audioContext.currentTime);
+                    feedbackOsc.stop(audioContext.currentTime + params.duration * 1.2);
+                }, 200);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // RENDERING - REMOVED bottom left text
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            calculateBarRects();
+            render();
+        }
+
+        function calculateBarRects() {
+            const rows = 7, cols = 7;
+
+            const minDim = Math.min(canvas.width, canvas.height);
+            const size = minDim * 0.8;
+            const spacing = size / 8;
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const index = r * cols + c;
+
+                    const u = (c - 3);
+                    const v = (r - 3);
+
+                    const tx = centerX + (u - v) * spacing * 0.75;
+                    const ty = centerY + (u + v) * spacing * 0.45;
+                    const pieceSize = spacing * 0.65;
+
+                    if (barStates[index]) {
+                        barStates[index].targetX = tx;
+                        barStates[index].targetY = ty;
+                        barStates[index].size = pieceSize;
+
+                        // Initial position if not set
+                        if (barStates[index].x === 0 && barStates[index].y === 0) {
+                            barStates[index].x = tx;
+                            barStates[index].y = ty;
+                        }
+                    }
+                }
+            }
+        }
+
+        function render() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw connecting lines
+            ctx.strokeStyle = 'rgba(60, 60, 60, 0.3)';
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i < barStates.length; i++) {
+                const state = barStates[i];
+                const row = Math.floor(i / 7);
+                const col = i % 7;
+
+                if (col < 6) {
+                    const rightState = barStates[i + 1];
+                    ctx.beginPath();
+                    ctx.moveTo(state.x, state.y);
+                    ctx.lineTo(rightState.x, rightState.y);
+                    ctx.stroke();
+                }
+
+                if (row < 6) {
+                    const bottomState = barStates[i + 7];
+                    ctx.beginPath();
+                    ctx.moveTo(state.x, state.y);
+                    ctx.lineTo(bottomState.x, bottomState.y);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw bars
+            barStates.forEach((state, i) => {
+                state.glowAmount = Math.max(0, state.glowAmount - 0.015);
+
+                const mallet = MALLET_TYPES[currentMalletType];
+                const baseColor = mallet.color;
+
+                ctx.save();
+                ctx.translate(state.x, state.y);
+
+                // Parse color for glow effects
+                const rgb = parseColor(baseColor);
+                const glowIntensity = state.glowAmount * 100;
+
+                // Draw diamond shape
+                ctx.beginPath();
+                ctx.moveTo(0, -state.size);
+                ctx.lineTo(state.size, 0);
+                ctx.lineTo(0, state.size);
+                ctx.lineTo(-state.size, 0);
+                ctx.closePath();
+
+                // Fill with gradient
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, state.size);
+                gradient.addColorStop(0, `rgba(${rgb.r + glowIntensity}, ${rgb.g + glowIntensity}, ${rgb.b + glowIntensity}, ${0.8 + state.glowAmount * 0.2})`);
+                gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.4 + state.glowAmount * 0.6})`);
+
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Glow effect
+                if (state.glowAmount > 0.1) {
+                    ctx.shadowBlur = 50 * state.glowAmount;
+                    ctx.shadowColor = baseColor;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                // Border with mallet color
+                ctx.strokeStyle = `rgba(${rgb.r + 50}, ${rgb.g + 50}, ${rgb.b + 50}, ${0.6 + state.glowAmount * 0.4})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Ratio text
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.8 + state.glowAmount * 0.2})`;
+                ctx.font = `400 ${state.size * 0.32}px 'Josefin Sans', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(state.ratio.replace('/', '/\n'), 0, 0);
+
+                ctx.restore();
+            });
+        }
+
+        function parseColor(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return { r, g, b };
+        }
+
+        function updatePhysics() {
+            barStates.forEach((state, i) => {
+                if (floatModeEnabled) {
+                    // Update position
+                    state.x += state.vx * floatSpeed;
+                    state.y += state.vy * floatSpeed;
+
+                    // Boundary collision
+                    let hit = false;
+                    if (state.x - state.size < 0) {
+                        state.x = state.size;
+                        state.vx *= -1;
+                        hit = true;
+                    } else if (state.x + state.size > canvas.width) {
+                        state.x = canvas.width - state.size;
+                        state.vx *= -1;
+                        hit = true;
+                    }
+
+                    if (state.y - state.size < 0) {
+                        state.y = state.size;
+                        state.vy *= -1;
+                        hit = true;
+                    } else if (state.y + state.size > canvas.height) {
+                        state.y = canvas.height - state.size;
+                        state.vy *= -1;
+                        hit = true;
+                    }
+
+                    if (hit && isInitialized) {
+                        const velocity = 0.5 + Math.random() * 0.5;
+                        strikeBar(i, velocity);
+                    }
+
+                    // Add a tiny bit of erratic movement
+                    state.vx += (Math.random() - 0.5) * 0.05;
+                    state.vy += (Math.random() - 0.5) * 0.05;
+
+                    // Limit speed
+                    const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
+                    if (speed > 5) {
+                        state.vx *= 0.99;
+                        state.vy *= 0.99;
+                    }
+                } else {
+                    // Snap back to target
+                    const dx = state.targetX - state.x;
+                    const dy = state.targetY - state.y;
+
+                    state.x += dx * 0.1;
+                    state.y += dy * 0.1;
+
+                    state.vx *= 0.9;
+                    state.vy *= 0.9;
+                }
+            });
+        }
+
+        function animate() {
+            updatePhysics();
+            render();
+            requestAnimationFrame(animate);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // INTERACTION
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        let activeTouches = new Map();
+
+        function getBarAtPoint(x, y) {
+            for (let i = 0; i < barStates.length; i++) {
+                const state = barStates[i];
+                const dx = Math.abs(x - state.x);
+                const dy = Math.abs(y - state.y);
+
+                if (dx + dy <= state.size) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        function handleStart(x, y, id) {
+            const barIndex = getBarAtPoint(x, y);
+            if (barIndex >= 0) {
+                const velocity = 0.8 + Math.random() * 0.2;
+                strikeBar(barIndex, velocity);
+                activeTouches.set(id, barIndex);
+            }
+        }
+
+        function handleMove(x, y, id) {
+            const barIndex = getBarAtPoint(x, y);
+            const lastBar = activeTouches.get(id);
+
+            if (barIndex >= 0 && barIndex !== lastBar) {
+                const velocity = 0.6 + Math.random() * 0.2;
+                strikeBar(barIndex, velocity);
+                activeTouches.set(id, barIndex);
+            }
+        }
+
+        function handleEnd(id) {
+            activeTouches.delete(id);
+        }
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                handleStart(x, y, touch.identifier);
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                handleMove(x, y, touch.identifier);
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                handleEnd(touch.identifier);
+            }
+        });
+
+        // Mouse events
+        let mouseDown = false;
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            handleStart(x, y, 'mouse');
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (mouseDown) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                handleMove(x, y, 'mouse');
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+            handleEnd('mouse');
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouseDown = false;
+            handleEnd('mouse');
+        });
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // UI CONTROLS
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        document.getElementById('fundamental-input').addEventListener('input', (e) => {
+            fundamental = parseFloat(e.target.value);
+            document.getElementById('fund-display').textContent = fundamental.toFixed(0);
+            calculateFrequencies();
+
+            // Only update frequencies in existing states to preserve positions
+            if (barStates.length > 0) {
+                barStates.forEach((state, i) => {
+                    if (frequencies[i]) {
+                        state.freq = frequencies[i];
+                    }
+                });
+            } else {
+                initBarStates();
+                calculateBarRects();
+            }
+        });
+
+        document.getElementById('mallet-type').addEventListener('change', (e) => {
+            currentMalletType = parseInt(e.target.value);
+        });
+
+        document.getElementById('resonance-toggle').addEventListener('click', (e) => {
+            resonanceEnabled = !resonanceEnabled;
+            e.target.classList.toggle('active');
+            e.target.textContent = resonanceEnabled ? 'ON ' : 'OFF';
+        });
+
+        document.getElementById('float-toggle').addEventListener('click', (e) => {
+            floatModeEnabled = !floatModeEnabled;
+            e.target.classList.toggle('active');
+            e.target.textContent = floatModeEnabled ? 'ON ' : 'OFF';
+
+            const speedControl = document.getElementById('speed-control');
+            speedControl.style.display = floatModeEnabled ? 'flex' : 'none';
+
+            if (floatModeEnabled) {
+                // Give initial velocity
+                barStates.forEach(state => {
+                    state.vx = (Math.random() - 0.5) * 8;
+                    state.vy = (Math.random() - 0.5) * 8;
+                });
+            }
+        });
+
+        document.getElementById('float-speed').addEventListener('input', (e) => {
+            floatSpeed = Math.max(0.1, parseFloat(e.target.value));
+            document.getElementById('speed-display').textContent = floatSpeed.toFixed(1);
+        });
+
+        // Hide/show controls
+        let controlsVisible = true;
+        document.getElementById('hide-controls').addEventListener('click', () => {
+            controlsVisible = !controlsVisible;
+            const controls = document.getElementById('controls');
+            const uiLayer = document.querySelector('.ui-layer');
+            const btn = document.getElementById('hide-controls');
+            if (controlsVisible) {
+                controls.classList.remove('hidden');
+                uiLayer.classList.remove('hidden');
+                btn.textContent = 'Hide';
+            } else {
+                controls.classList.add('hidden');
+                uiLayer.classList.add('hidden');
+                btn.textContent = 'Show';
+            }
+        });
+
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + random + '/';
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // INITIALIZATION
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        document.getElementById('init-btn').addEventListener('click', () => {
+            initAudio();
+            document.getElementById('init-overlay').style.display = 'none';
+            resize();
+            animate();
+        });
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resize, 100);
+        });
+
+        // Initial setup
+        resize();
+    </script>
+
+
+
+
+
+
+
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!isInitialized) {
+                        return; // Silently ignore MIDI until manually initialized
+                    }
+
+                    const numNotes = frequencies ? frequencies.length : 49;
+                    const index = data.note % numNotes;
+                    const vel = data.velocity / 127;
+
+                    if (typeof strikeBar === 'function') {
+                        strikeBar(index, vel);
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    // Marimba-style, usually no noteoff logic needed for strike-based instruments
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        if (masterGain) {
+                            masterGain.gain.setTargetAtTime(data.value / 127, audioContext.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
+</body>
+
+</html>

@@ -316,6 +316,7 @@
             max-width: 80%;
         }
 
+        /* FIX: allow clicks to pass through loading overlay */
         .loading {
             display: none;
             position: absolute;
@@ -324,18 +325,61 @@
             transform: translate(-50%, -50%);
             text-align: center;
             z-index: 1001;
+            pointer-events: none;
+        }
+
+        #persistent-nav {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: 'Josefin Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
         }
     </style>
 </head>
 
 <body>
+    <!-- Persistent navigation (restored) -->
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="randomApp()">R</button>
+    </div>
 
+    <!-- Touch pad with crosshairs (restored) -->
     <div id="pad-container">
         <div class="crosshair crosshair-h"></div>
         <div class="crosshair crosshair-v"></div>
         <div id="touch-indicator"></div>
     </div>
 
+    <!-- UI overlay (info panel, etc.) -->
     <div class="ui-layer">
         <div class="header">
             <div class="title-block">
@@ -380,6 +424,7 @@
         </div>
     </div>
 
+    <!-- Start overlay (initialise screen) -->
     <div id="start-overlay">
         <button class="start-btn" id="start-btn">INITIALISE</button>
         <div class="hint">
@@ -405,10 +450,13 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <script>
-        let isActive = false;
-        let audioInitialized = false;
-        let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        // ==================== GLOBAL VARIABLES ====================
         let isTouching = false;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let audioInitialized = false;
+        let isActive = false;
+
+        const app = window.app = {}; // For MIDI exposure
 
         const pad = document.getElementById('pad-container');
         const indicator = document.getElementById('touch-indicator');
@@ -426,6 +474,17 @@
 
         const numDelays = 8;
 
+        // ==================== RANDOM APP NAVIGATION ====================
+        function randomApp() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let random = apps[Math.floor(Math.random() * apps.length)];
+            while (window.location.href.includes(random)) {
+                random = apps[Math.floor(Math.random() * apps.length)];
+            }
+            window.location.href = '../' + random + '/';
+        }
+
+        // ==================== AUDIO INITIALIZATION (FIXED) ====================
         async function initAudio() {
             if (audioInitialized) {
                 console.log('Audio already initialized');
@@ -438,18 +497,26 @@
 
                 console.log('Starting Tone.js initialization...');
 
-                await Tone.start();
-                console.log('Audio context started successfully');
+                // FIX: add a timeout to prevent hanging forever
+                const timeoutMs = 5000;
+                const toneStartPromise = Tone.start();
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Tone.start() timed out')), timeoutMs)
+                );
+                await Promise.race([toneStartPromise, timeoutPromise]);
+
                 console.log('Tone context state:', Tone.context.state);
 
                 createAudioNodes();
                 console.log('Audio nodes created');
 
                 audioInitialized = true;
+                window.audioInitialized = true;
                 statusText.textContent = 'READY - CLICK START';
                 loading.style.display = 'none';
 
                 console.log('Audio fully initialized');
+                window.audioInitialized = audioInitialized; // Expose for MIDI
 
                 requestAnimationFrame(updateMeter);
 
@@ -567,6 +634,7 @@
                     bar.classList.toggle('active', normalized > i / bars.length);
                 });
             } catch (e) {
+                // ignore
             }
 
             requestAnimationFrame(updateMeter);
@@ -833,29 +901,70 @@
             }
         });
 
-        console.log('REVERIE script loaded successfully');
+        console.log('GINUNG script loaded successfully');
     </script>
-    <div id="nav-buttons"
-        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
-        <button onclick="window.location.href='../index.html'"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
-    </div>
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
     <script>
-        function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
-            let random = apps[Math.floor(Math.random() * apps.length)];
-            while (window.location.href.includes(random)) {
-                 random = apps[Math.floor(Math.random() * apps.length)];
-            }
-            window.location.href = '../' + random + '/';
-        }
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!window.audioInitialized) return;
+                    if (!isActive) return; // Silently ignore MIDI until manually started
+
+                    const pad = document.getElementById('pad-container');
+                    const indicator = document.getElementById('touch-indicator');
+                    const rect = pad.getBoundingClientRect();
+
+                    const x = (data.note / 127) * rect.width;
+                    const y = (1 - (data.velocity / 127)) * rect.height;
+
+                    if (isActive) {
+                        indicator.style.display = 'block';
+                        indicator.style.left = x + 'px';
+                        indicator.style.top = y + 'px';
+
+                        if (!isTouching) {
+                            if (typeof createRipple === 'function') createRipple(x, y);
+                            if (typeof startTouch === 'function') startTouch();
+                        }
+
+                        if (typeof updateDelays === 'function') updateDelays(x, y);
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    // Only act if system is active
+                    if (isActive) {
+                        const indicator = document.getElementById('touch-indicator');
+                        if (indicator) indicator.style.display = 'none';
+                        endTouch?.();
+                    }
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const master = window.mainGain || window.outputGain;
+                        if (master && master.gain && master.gain.rampTo) {
+                            master.gain.rampTo(data.value / 127, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
     </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

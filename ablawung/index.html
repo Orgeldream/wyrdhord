@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Microtonal Vocal Synthesizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glow: rgba(200, 220, 255, 0.2);
+            --accent: #e0e6ed;
+            --font-main: 'Outfit', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--accent);
+            font-family: var(--font-main);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px;
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+
+        .ui-layer.hidden {
+            opacity: 0;
+        }
+
+        .header {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .title-block {
+            pointer-events: auto;
+            text-align: left;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .title-text {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle-text {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        #nav-buttons {
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            /* Brighter color */
+            width: 32px;
+            /* Smaller size */
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        #persistent-nav {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        #columns-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: stretch;
+            align-items: stretch;
+            gap: 1px;
+            padding: 0;
+            z-index: 5;
+            overflow: hidden;
+        }
+
+        .column {
+            flex: 1 1 0;
+            height: 100%;
+            background: var(--glass);
+            border-left: 1px solid var(--glass-border);
+            position: relative;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: background 0.3s ease;
+        }
+
+        .column:last-child {
+            border-right: 1px solid var(--glass-border);
+        }
+
+        .ratio-label {
+            position: absolute;
+            bottom: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            white-space: nowrap;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .column:hover .ratio-label,
+        .column.active .ratio-label {
+            opacity: 0.6;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 40px;
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--accent);
+            padding: 8px 16px;
+            font-family: var(--font-main);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .btn:hover,
+        .btn.active {
+            background: var(--glass-border);
+            border-color: var(--accent);
+        }
+
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .start-title {
+            font-size: 24px;
+            font-weight: 200;
+            letter-spacing: 12px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        #random-btn {
+            left: 62px;
+        }
+
+        @media (max-width: 600px) {
+            #columns-container {
+                padding: 0 5%;
+                flex-direction: row;
+                height: 70%;
+            }
+
+            .column {
+                height: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="start-overlay" onclick="start()">
+        <div class="start-title">INITIALISE</div>
+        <div style="font-size: 10px; letter-spacing: 4px; opacity: 0.5;">43-TONE FORMANT SYNTHESIS</div>
+    </div>
+
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
+
+    <button id="toggle-ui"
+        style="position: fixed; top: 24px; right: 24px; background:none; border:none; color:#fff; opacity:0; cursor:pointer; font-size:10px; letter-spacing:1px; text-transform:uppercase; pointer-events: auto; z-index: 1000; transition: opacity 0.3s;">Hide</button>
+
+    <div class="header" style="opacity: 0; transition: opacity 0.3s;">
+        <div class="title-block">
+            <div class="title-text">ABLAWUNG</div>
+            <div class="subtitle-text">MICROTONAL VOCAL SYNTHESISER</div>
+        </div>
+    </div>
+
+    <div id="controls" style="opacity: 0; transition: opacity 0.3s;">
+        <button id="auto-breath-btn" class="btn" onclick="toggleAutoBreath()">Auto-Breath</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+    <div id="columns-container"></div>
+
+    <script>
+        // ===== GLOBALS FOR MIDI ACCESS =====
+        let isStarted = false;
+        let audioCtx;
+        let masterGain;
+        let compressor;
+        let columns = [];
+
+        // Harry Partch's 43-tone scale (selected ratios)
+        const RATIOS = [
+            { n: 1, d: 1, label: "1/1", bottom: "U", top: "EE" },
+            { n: 81, d: 80, label: "81/80", bottom: "U", top: "O" },
+            { n: 33, d: 32, label: "33/32", bottom: "U", top: "O" },
+            { n: 21, d: 20, label: "21/20", bottom: "O", top: "AW" },
+            { n: 16, d: 15, label: "16/15", bottom: "O", top: "AW" },
+            { n: 12, d: 11, label: "12/11", bottom: "AW", top: "AH" },
+            { n: 11, d: 10, label: "11/10", bottom: "AW", top: "AH" },
+            { n: 10, d: 9, label: "10/9", bottom: "AH", top: "EH" },
+            { n: 9, d: 8, label: "9/8", bottom: "AH", top: "EH" },
+            { n: 8, d: 7, label: "8/7", bottom: "EH", top: "EE" },
+            { n: 7, d: 6, label: "7/6", bottom: "EH", top: "EE" },
+            { n: 6, d: 5, label: "6/5", bottom: "EE", top: "IH" },
+            { n: 11, d: 9, label: "11/9", bottom: "EE", top: "IH" },
+            { n: 5, d: 4, label: "5/4", bottom: "U", top: "O" },
+            { n: 14, d: 11, label: "14/11", bottom: "O", top: "AH" },
+            { n: 9, d: 7, label: "9/7", bottom: "AH", top: "EH" },
+            { n: 4, d: 3, label: "4/3", bottom: "EH", top: "EE" },
+            { n: 27, d: 20, label: "27/20", bottom: "O", top: "EE" },
+            { n: 11, d: 8, label: "11/8", bottom: "AW", top: "IH" },
+            { n: 7, d: 5, label: "7/5", bottom: "AH", top: "U" },
+            { n: 3, d: 2, label: "3/2", bottom: "U", top: "EE" },
+            { n: 14, d: 9, label: "14/9", bottom: "O", top: "AH" },
+            { n: 11, d: 7, label: "11/7", bottom: "AH", top: "EE" },
+            { n: 8, d: 5, label: "8/5", bottom: "EE", top: "O" },
+            { n: 18, d: 11, label: "18/11", bottom: "IH", top: "AW" },
+            { n: 5, d: 3, label: "5/3", bottom: "U", top: "EE" },
+            { n: 27, d: 16, label: "27/16", bottom: "O", top: "AH" },
+            { n: 7, d: 4, label: "7/4", bottom: "AH", top: "IH" },
+            { n: 16, d: 9, label: "16/9", bottom: "EH", top: "U" },
+            { n: 9, d: 5, label: "9/5", bottom: "EE", top: "AW" },
+            { n: 20, d: 11, label: "20/11", bottom: "U", top: "AH" },
+            { n: 11, d: 6, label: "11/6", bottom: "O", top: "EE" },
+            { n: 15, d: 8, label: "15/8", bottom: "AW", top: "IH" },
+            { n: 2, d: 1, label: "2/1", bottom: "AH", top: "U" }
+        ];
+
+        const BASE_FREQ = 110;
+
+        // Formant frequencies for vowel synthesis
+        const FORMANTS = {
+            "U": [300, 870, 2240], // "oo" as in "boot"
+            "O": [400, 800, 2600], // "oh" as in "note"
+            "AW": [600, 1040, 2250], // "aw" as in "law"
+            "AH": [730, 1090, 2440], // "ah" as in "father"
+            "EH": [530, 1840, 2480], // "eh" as in "bed"
+            "EE": [270, 2290, 3010], // "ee" as in "beet"
+            "IH": [390, 1990, 2550]  // "ih" as in "bit"
+        };
+
+        let canvas, ctx, width, height;
+        let autoBreath = false;
+        let lastFrameTime = 0;
+
+        class Column {
+            constructor(index, ratioInfo) {
+                this.index = index;
+                this.ratio = ratioInfo.n / ratioInfo.d;
+                this.label = ratioInfo.label;
+                this.vowelBottom = ratioInfo.bottom;
+                this.vowelTop = ratioInfo.top;
+                this.freq = BASE_FREQ * this.ratio;
+
+                this.el = document.createElement('div');
+                this.el.className = 'column';
+                this.el.innerHTML = `<div class="ratio-label">${this.label}<br>${this.vowelBottom} → ${this.vowelTop}</div>`;
+                document.getElementById('columns-container').appendChild(this.el);
+
+                this.active = false;
+                this.touchId = null;
+                this.pressure = 0;
+                this.targetPressure = 0;
+                this.morph = 0; // 0 = Bottom, 1 = Top
+                this.autoTarget = 0;
+                this.touchY = 0.5; // Current touch position (0 = top, 1 = bottom)
+                this.noteOffTime = 0; // Track when note should turn off
+
+                // Breath cycle
+                this.phase = Math.random() * Math.PI * 2;
+                this.phaseSpeed = 0.0006 + Math.random() * 0.0012;
+                this.swirlPhase = 0;
+
+                // Auto-breath timing
+                this.autoBreathTimer = 0;
+                this.autoBreathDuration = 0;
+                this.autoBreathDelay = 0;
+
+                this.setupAudio();
+            }
+
+            setupAudio() {
+                this.sourceNode = null;
+                this.sourceGain = null;
+                this.formantFilters = [];
+                this.formantGains = [];
+                this.outputGain = null;
+            }
+
+            initNodes() {
+                if (this.outputGain) return;
+
+                // Create sawtooth oscillator (rich harmonics for formant filtering)
+                this.sourceNode = audioCtx.createOscillator();
+                this.sourceNode.type = 'sawtooth';
+                this.sourceNode.frequency.value = this.freq;
+
+                // Add slight vibrato
+                const vibrato = audioCtx.createOscillator();
+                const vibratoGain = audioCtx.createGain();
+                vibrato.frequency.value = 5 + Math.random() * 2;
+                vibratoGain.gain.value = 3;
+                vibrato.connect(vibratoGain);
+                vibratoGain.connect(this.sourceNode.detune);
+                vibrato.start();
+
+                this.sourceGain = audioCtx.createGain();
+                this.sourceGain.gain.value = 1.8;
+                this.sourceNode.connect(this.sourceGain);
+
+                // Create formant filters (3 formants that interpolate)
+                for (let i = 0; i < 3; i++) {
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.value = FORMANTS[this.vowelBottom][i];
+                    filter.Q.value = filter.frequency.value / 100;
+
+                    const gain = audioCtx.createGain();
+                    gain.gain.value = i === 0 ? 1.5 : (i === 1 ? 0.8 : 0.4);
+
+                    this.sourceGain.connect(filter);
+                    filter.connect(gain);
+
+                    this.formantFilters.push(filter);
+                    this.formantGains.push(gain);
+                }
+
+                // Mix all formants
+                this.outputGain = audioCtx.createGain();
+                this.outputGain.gain.value = 0;
+                this.formantGains.forEach(g => g.connect(this.outputGain));
+                this.outputGain.connect(compressor);
+
+                this.sourceNode.start();
+            }
+
+            update(dt) {
+                // Slower swell for auto-breath, snappier for manual
+                const isAuto = this.autoTarget > 0 && !this.active;
+                const baseLerp = isAuto ? 0.008 : 0.04;
+                const lerpSpeed = this.targetPressure > this.pressure ? baseLerp : baseLerp * 1.5;
+                const finalTarget = Math.max(this.targetPressure, this.autoTarget);
+                this.pressure += (finalTarget - this.pressure) * lerpSpeed;
+
+                // Apply rapid decay when note should be off
+                if (this.noteOffTime > 0 && Date.now() > this.noteOffTime) {
+                    this.pressure *= 0.7; // Fast decay
+                    if (this.pressure < 0.01) {
+                        this.pressure = 0;
+                        this.noteOffTime = 0;
+                    }
+                }
+
+                // Breath cycle
+                this.phase += this.phaseSpeed * dt;
+                const breathMod = 0.8 + Math.sin(this.phase) * 0.2;
+                const currentAmp = this.pressure * breathMod;
+
+                if (this.outputGain) {
+                    // Use faster time constant for envelope
+                    const timeConstant = currentAmp < this.outputGain.gain.value ? 0.03 : 0.05; // Faster release
+                    this.outputGain.gain.setTargetAtTime(currentAmp * 0.7, audioCtx.currentTime, timeConstant);
+
+                    // Vowel Morphing
+                    this.formantFilters.forEach((filter, i) => {
+                        const freqBottom = FORMANTS[this.vowelBottom][i];
+                        const freqTop = FORMANTS[this.vowelTop][i];
+                        const targetFreq = freqBottom + (freqTop - freqBottom) * this.morph;
+
+                        filter.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.1);
+                        filter.Q.setTargetAtTime(targetFreq / 80, audioCtx.currentTime, 0.1);
+                    });
+                }
+
+                this.swirlPhase += 0.02 + this.pressure * 0.05;
+            }
+
+            draw(ctx, width, height) {
+                const rect = this.el.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top;
+                const w = rect.width;
+                const h = rect.height;
+
+                if (this.pressure > 0.01) {
+                    const alpha = this.pressure * 0.5;
+
+                    const touchYPos = rect.top + (h * (1 - this.touchY));
+                    const gradHeight = h * 0.3;
+
+                    const grad = ctx.createRadialGradient(
+                        x, touchYPos, 0,
+                        x, touchYPos, gradHeight
+                    );
+
+                    grad.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.8})`);
+                    grad.addColorStop(0.5, `rgba(255, 255, 255, ${alpha * 0.4})`);
+                    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    const ringRadius = 20 + Math.sin(this.swirlPhase) * 10;
+                    ctx.arc(x, touchYPos, ringRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    const numStreaks = 8;
+                    for (let i = 0; i < numStreaks; i++) {
+                        const streakX = rect.left + (rect.width * (i / numStreaks));
+                        const streakAlpha = alpha * 0.3 * (0.5 + Math.sin(this.swirlPhase + i) * 0.5);
+
+                        const streakGrad = ctx.createLinearGradient(streakX, touchYPos - gradHeight, streakX, touchYPos + gradHeight);
+                        streakGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                        streakGrad.addColorStop(0.5, `rgba(255, 255, 255, ${streakAlpha})`);
+                        streakGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                        ctx.strokeStyle = streakGrad;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(streakX, touchYPos - gradHeight);
+                        ctx.lineTo(streakX, touchYPos + gradHeight);
+                        ctx.stroke();
+                    }
+
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${this.pressure * 0.15})`;
+                    ctx.lineWidth = 1.5;
+                    for (let i = 0; i < 8; i++) {
+                        ctx.beginPath();
+                        const sw = Math.sin(this.swirlPhase + i * 2) * (rect.width * 0.4);
+                        const sy = touchYPos + (Math.sin(this.swirlPhase * 0.5 + i) * gradHeight * 0.8);
+                        const swirlLen = 30 + this.pressure * 20;
+                        ctx.moveTo(x + sw, sy);
+                        ctx.lineTo(x - sw, sy + swirlLen);
+                        ctx.stroke();
+                    }
+
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+                    for (let i = 0; i < 5; i++) {
+                        const dotY = rect.top + (h * (i / 5));
+                        const dotSize = 2 + Math.sin(this.swirlPhase + i * 2) * 2;
+                        ctx.beginPath();
+                        ctx.arc(x, dotY, dotSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function init() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            resize();
+            window.addEventListener('resize', resize);
+
+            const container = document.getElementById('columns-container');
+
+            RATIOS.forEach((r, i) => {
+                columns.push(new Column(i, r));
+            });
+
+            // Expose columns globally for MIDI
+            window.columns = columns;
+
+            // Global Multi-Touch Lane Handling
+            const handleInteract = (e) => {
+                if (!isStarted) return;
+                e.preventDefault();
+
+                const touches = e.touches || [e];
+                const rect = container.getBoundingClientRect();
+
+                // Reset active status if not touched
+                if (e.type === 'mouseup' || e.type === 'touchend' || e.type === 'touchcancel') {
+                    columns.forEach(c => {
+                        if (!e.touches || ![...e.touches].some(t => {
+                            const colIndex = Math.floor(((t.clientX - rect.left) / rect.width) * columns.length);
+                            return colIndex === c.index;
+                        })) {
+                            c.active = false;
+                            c.targetPressure = 0;
+                            c.noteOffTime = Date.now() + 50; // Start note-off after 50ms
+                            c.el.classList.remove('active');
+                        }
+                    });
+                    return;
+                }
+
+                [...touches].forEach(t => {
+                    const xNormal = (t.clientX - rect.left) / rect.width;
+                    const yNormal = 1 - (t.clientY - rect.top) / rect.height;
+                    const colIndex = Math.floor(xNormal * columns.length);
+
+                    if (colIndex >= 0 && colIndex < columns.length) {
+                        const col = columns[colIndex];
+                        col.active = true;
+                        col.targetPressure = 1.0;
+                        col.noteOffTime = 0; // Cancel any pending note-off
+                        col.morph = Math.max(0, Math.min(1, yNormal));
+                        col.touchY = 1 - yNormal;
+                        col.el.classList.add('active');
+                        col.initNodes();
+                    }
+                });
+            };
+
+            container.addEventListener('mousedown', handleInteract);
+            window.addEventListener('mousemove', (e) => { if (e.buttons > 0) handleInteract(e); });
+            window.addEventListener('mouseup', handleInteract);
+
+            container.addEventListener('touchstart', handleInteract, { passive: false });
+            container.addEventListener('touchmove', handleInteract, { passive: false });
+            container.addEventListener('touchend', handleInteract, { passive: false });
+            container.addEventListener('touchcancel', handleInteract, { passive: false });
+
+            animate();
+        }
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width * window.devicePixelRatio;
+            canvas.height = height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        function start() {
+            if (isStarted) return;
+            isStarted = true;
+            window.isStarted = true; // for MIDI
+            document.getElementById('start-overlay').style.opacity = 0;
+            setTimeout(() => {
+                document.getElementById('start-overlay').style.display = 'none';
+            }, 1000);
+
+            // Show UI elements after initialization
+            setTimeout(() => {
+                document.querySelector('.header').style.opacity = 1;
+                document.getElementById('controls').style.opacity = 1;
+                document.getElementById('toggle-ui').style.opacity = 0.3;
+            }, 500);
+
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -10;
+            compressor.knee.value = 30;
+            compressor.ratio.value = 8;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.15; // Faster release for cleaner note-offs
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 1.4;
+
+            compressor.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            // Expose masterGain for MIDI
+            window.masterGain = masterGain;
+        }
+
+        function animate(currentTime = 0) {
+            // Calculate delta time for consistent animation
+            const dt = lastFrameTime ? (currentTime - lastFrameTime) / 16.67 : 1;
+            lastFrameTime = currentTime;
+
+            ctx.clearRect(0, 0, width, height);
+
+            if (autoBreath) {
+                // FIX 2: More active auto-breath mode
+                columns.forEach(c => {
+                    // Reset auto-breath timer when it's done
+                    if (c.autoBreathTimer > 0) {
+                        c.autoBreathTimer -= dt;
+                        if (c.autoBreathTimer <= 0) {
+                            c.autoTarget = 0;
+                            // Set up next auto-breath event - SIGNIFICANTLY SLOWER
+                            c.autoBreathDelay = Math.random() * 8000 + 4000; // 4-12 seconds between breaths
+                        }
+                    } else if (c.autoBreathDelay > 0) {
+                        c.autoBreathDelay -= dt * 16.67;
+                        if (c.autoBreathDelay <= 0) {
+                            // Trigger a breath - LONGER DURATION
+                            c.autoTarget = 0.6 + Math.random() * 0.4;
+                            c.autoBreathDuration = Math.random() * 3000 + 2000; // 2-5 seconds duration
+                            c.autoBreathTimer = c.autoBreathDuration / 16.67;
+                            c.morph = Math.random();
+                            c.initNodes();
+                        }
+                    }
+                });
+            }
+
+            columns.forEach(c => {
+                c.update(dt);
+                c.draw(ctx, width, height);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        function toggleAutoBreath() {
+            autoBreath = !autoBreath;
+            document.getElementById('auto-breath-btn').classList.toggle('active', autoBreath);
+            if (!autoBreath) {
+                columns.forEach(c => {
+                    c.autoTarget = 0;
+                    c.autoBreathTimer = 0;
+                    c.autoBreathDelay = 0;
+                });
+            } else {
+                // Initialize auto-breath timers with random offsets
+                columns.forEach((c, i) => {
+                    c.autoTarget = 0;
+                    c.autoBreathTimer = 0;
+                    // Start 3-5 columns immediately, stagger the rest
+                    if (Math.random() < 0.15) {
+                        c.autoBreathDelay = 0;
+                    } else {
+                        c.autoBreathDelay = Math.random() * 10000; // Staggered start up to 10s
+                    }
+                });
+            }
+        }
+
+        document.getElementById('toggle-ui').onclick = () => {
+            const headerEl = document.querySelector('.header');
+            const controlsEl = document.getElementById('controls');
+
+            const headerVisible = headerEl.style.opacity === '' || headerEl.style.opacity === '1';
+            const nextOpacity = headerVisible ? '0' : '1';
+
+            headerEl.style.opacity = nextOpacity;
+            controlsEl.style.opacity = nextOpacity;
+
+            const btn = document.getElementById('toggle-ui');
+            btn.innerText = headerVisible ? 'Show' : 'Hide';
+        };
+
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
+        }
+
+        init();
+    </script>
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!window.isStarted) return; // Global rule: check for manual init
+
+                    if (!window.columns || !window.columns.length) return;
+
+                    const numCols = window.columns.length;
+                    const index = data.note % numCols;
+                    const vel = data.velocity / 127;
+
+                    console.log("Ablawung MIDI", data.note, "to Index", index);
+
+                    const col = window.columns[index];
+                    if (col) {
+                        col.active = true;
+                        col.targetPressure = 1.0;
+                        col.noteOffTime = 0;
+                        col.morph = Math.max(0, Math.min(1, vel));
+                        col.touchY = 1 - vel;
+                        col.el.classList.add('active');
+                        col.initNodes?.();
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    if (!window.columns || !window.columns.length) return;
+                    const numCols = window.columns.length;
+                    const index = data.note % numCols;
+                    const col = window.columns[index];
+                    if (col) {
+                        col.active = false;
+                        col.targetPressure = 0;
+                        col.noteOffTime = Date.now() + 50;
+                        col.el.classList.remove('active');
+                    }
+                });
+
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        const master = window.masterGain;
+                        if (master && master.gain && master.gain.setTargetAtTime) {
+                            master.gain.setTargetAtTime(data.value / 127, 0, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
+</body>
+
+</html>

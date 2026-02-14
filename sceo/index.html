@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cloud-Chamber Bowls</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --accent-color: #888;
+            --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+            --control-bg: rgba(20, 20, 20, 0.85);
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            touch-action: none;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px;
+            transition: opacity 0.3s ease;
+        }
+
+        #ui-layer.hidden {
+            opacity: 0;
+        }
+
+        /* ===== PERSISTENT M/R BUTTONS (always on top) ===== */
+        #persistent-nav {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 1000; /* above overlay (100) */
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: var(--control-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        /* ===== HEADER LAYOUT (three‑column grid) ===== */
+        .header {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .title-block {
+            justify-self: start;
+            text-align: left;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+        }
+
+        /* Right column: Controls toggle button */
+        .nav-right {
+            justify-self: end;
+            pointer-events: auto;
+        }
+
+        #toggle-controls {
+            background: transparent;
+            border: none;
+            color: #fff;
+            opacity: 0.3;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 12px;
+            transition: opacity 0.3s;
+        }
+
+        #toggle-controls:hover {
+            opacity: 1;
+        }
+
+        #init-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 1s ease, visibility 1s;
+        }
+
+        #init-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #init-btn {
+            background: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 20px 50px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            margin-bottom: 30px;
+        }
+
+        #init-btn:hover {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+
+        .init-subtext {
+            font-size: 12px;
+            letter-spacing: 2px;
+            opacity: 0.5;
+            text-transform: uppercase;
+        }
+
+        #controls-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        #controls-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .control-group {
+            background: var(--control-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 160px;
+        }
+
+        .control-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            opacity: 0.6;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #fff;
+        }
+
+        .toggle-btn {
+            background: rgba(40, 40, 40, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: #666;
+            padding: 6px 12px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-family: var(--font-main);
+            letter-spacing: 1px;
+        }
+
+        .toggle-btn.active {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        /* --- MOBILE RESPONSIVENESS --- */
+        @media (max-width: 768px) {
+            #ui-layer {
+                padding: 15px;
+            }
+
+            #controls-container {
+                flex-direction: column;
+                bottom: 20px;
+                width: 80%;
+                gap: 8px;
+            }
+
+            .control-group {
+                padding: 10px 15px;
+                min-width: 0;
+                width: 100%;
+                gap: 4px;
+            }
+
+            .control-label {
+                font-size: 9px;
+            }
+
+            .nav-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 12px;
+            }
+
+            #toggle-controls {
+                font-size: 10px;
+            }
+
+            .header {
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Persistent M/R buttons (always on top) -->
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+    <div id="ui-layer">
+        <!-- ===== HEADER (title left, controls right) ===== -->
+        <div class="header">
+            <!-- Left: title -->
+            <div class="title-block">
+                <div class="title">SCEO</div>
+                <div class="subtitle">CLOUD-CHAMBER BOWLS</div>
+            </div>
+
+            <!-- Center: empty placeholder to keep grid spacing (buttons moved to persistent-nav) -->
+            <div style="justify-self: center;"></div>
+
+            <!-- Right: Controls toggle button -->
+            <div class="nav-right">
+                <button id="toggle-controls">Controls</button>
+            </div>
+        </div>
+
+        <!-- Controls container (bottom) -->
+        <div id="controls-container">
+            <div class="control-group">
+                <div class="control-label">Fundamental: <span id="freq-val">110</span>Hz</div>
+                <input type="range" id="freq-slider" min="60" max="440" step="1" value="110">
+            </div>
+            <div class="control-group">
+                <div class="control-label">Decay Length</div>
+                <input type="range" id="decay-slider" min="1" max="20" step="0.1" value="8">
+            </div>
+            <div class="control-group">
+                <div class="control-label">Brightness</div>
+                <input type="range" id="brightness-slider" min="0.1" max="2" step="0.01" value="0.8">
+            </div>
+            <div class="control-group">
+                <div class="control-label">Attack</div>
+                <button class="toggle-btn active" id="skin-toggle">On</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="init-overlay">
+        <button id="init-btn">Initialise</button>
+        <div class="init-subtext">Cloud-Chamber Bowls</div>
+    </div>
+
+    <script>
+        // === GLOBALS FOR MIDI ACCESS ===
+        let audioCtx;
+        let masterGain;
+        let reverb;
+        let isAudioStarted = false;
+        let plateEnabled = true;
+        let bowls = [];
+        let ripples = [];
+
+        // Expose globals to window
+        window.isAudioStarted = false; // will be updated later
+        window.bowls = bowls;
+        window.ripples = ripples;
+        window.masterGain = masterGain;
+        window.audioCtx = audioCtx;
+
+        // --- CONSTANTS & CONFIG ---
+        const BOWL_RATIOS = [
+            1 / 1,    // G2 approx
+            10 / 9,   // UT 9
+            8 / 7,    // OT 7
+            6 / 5,    // UT 5
+            5 / 4,    // OT 5
+            4 / 3,    // UT 3
+            11 / 8,   // OT 11
+            3 / 2,    // OT 3
+            14 / 9,   // Mix
+            8 / 5,    // UT 5 second
+            7 / 4,    // OT 7 second
+        ];
+
+        // Improved modal synthesis for glass bowl sounds
+        const GLASS_BOWL_MODES = [
+            { ratio: 1.00, gain: 1.00, q: 600, decayMod: 1.0, detune: 0 },
+            { ratio: 2.76, gain: 0.35, q: 400, decayMod: 0.7, detune: -3 },
+            { ratio: 3.52, gain: 0.25, q: 300, decayMod: 0.6, detune: 2 },
+            { ratio: 4.91, gain: 0.18, q: 250, decayMod: 0.5, detune: -1 },
+            { ratio: 5.67, gain: 0.12, q: 200, decayMod: 0.45, detune: 4 },
+            { ratio: 6.83, gain: 0.08, q: 180, decayMod: 0.4, detune: -2 },
+            { ratio: 8.42, gain: 0.06, q: 150, decayMod: 0.35, detune: 3 },
+            { ratio: 9.71, gain: 0.04, q: 120, decayMod: 0.3, detune: -4 }
+        ];
+
+        // Hrisian "Plate" Model parameters
+        const PLATE_MODEL = {
+            ratios: [1.0, 1.272, 1.618, 2.058, 2.618, 3.330, 4.236, 5.388, 6.854, 8.719],
+            gains: [1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55],
+            q: [150, 160, 170, 180, 190, 200, 210, 220, 230, 240]
+        };
+
+        async function initAudio() {
+            if (isAudioStarted) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create reverb for smooth decays
+            reverb = audioCtx.createConvolver();
+            const impulseResponse = createImpulseResponse(0.75);
+            reverb.buffer = impulseResponse;
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.8;
+
+            reverb.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+            isAudioStarted = true;
+            window.isAudioStarted = true;
+            window.masterGain = masterGain;
+            window.audioCtx = audioCtx;
+        }
+
+        function createImpulseResponse(duration) {
+            const sampleRate = audioCtx.sampleRate;
+            const length = Math.floor(sampleRate * duration);
+            const impulse = audioCtx.createBuffer(2, length, sampleRate);
+            const left = impulse.getChannelData(0);
+            const right = impulse.getChannelData(1);
+
+            for (let i = 0; i < length; i++) {
+                const t = i / sampleRate;
+                const decay = Math.exp(-t * 2.0);
+                const diffusion = Math.random() * 0.1;
+                left[i] = (Math.random() * 2 - 1) * decay * diffusion;
+                right[i] = (Math.random() * 2 - 1) * decay * diffusion * 0.9;
+            }
+            return impulse;
+        }
+
+        class BowlVoice {
+            constructor(freq, pan) {
+                this.freq = freq;
+                this.oscillators = [];
+                this.panner = audioCtx.createStereoPanner();
+                this.panner.pan.value = pan;
+                this.panner.connect(reverb);
+                this.dryPanner = audioCtx.createStereoPanner();
+                this.dryPanner.pan.value = pan;
+                this.dryPanner.connect(masterGain);
+            }
+
+            updateBaseFreq(newFreq) {
+                this.freq = newFreq;
+            }
+
+            strike(velocity = 0.8, brightness = 0.8) {
+                const now = audioCtx.currentTime;
+                if (!audioCtx) return;
+
+                const decayBase = parseFloat(document.getElementById('decay-slider').value);
+                const brightnessValue = parseFloat(document.getElementById('brightness-slider').value);
+
+                this.createExciter(velocity, brightness, now);
+
+                GLASS_BOWL_MODES.forEach((mode, i) => {
+                    const modeFreq = this.freq * mode.ratio;
+                    if (modeFreq > 20000) return;
+
+                    const osc = audioCtx.createOscillator();
+                    osc.frequency.setValueAtTime(modeFreq + mode.detune, now);
+                    osc.type = 'sine';
+
+                    const gainNode = audioCtx.createGain();
+
+                    const attackTime = 0.02 + (1 - brightness) * 0.03;
+                    const decayTime = decayBase * mode.decayMod * (0.9 + Math.random() * 0.2);
+                    const brightnessFactor = Math.pow(brightnessValue, 0.7);
+                    const modeGain = mode.gain * velocity * brightnessFactor *
+                        (i === 0 ? 1.0 : Math.pow(brightnessValue, i * 0.3));
+
+                    gainNode.gain.setValueAtTime(0.001, now);
+                    gainNode.gain.linearRampToValueAtTime(modeGain, now + attackTime);
+                    const releaseTime = 0.1;
+                    gainNode.gain.exponentialRampToValueAtTime(modeGain * 0.001, now + attackTime + decayTime);
+                    gainNode.gain.linearRampToValueAtTime(0.00001, now + attackTime + decayTime + releaseTime);
+
+                    osc.connect(gainNode);
+                    gainNode.connect(this.panner);
+                    osc.start(now);
+                    osc.stop(now + attackTime + decayTime + releaseTime + 0.1);
+
+                    this.oscillators.push({ osc, gainNode });
+                    setTimeout(() => {
+                        osc.disconnect();
+                        gainNode.disconnect();
+                        this.oscillators = this.oscillators.filter(o => o.osc !== osc);
+                    }, (attackTime + decayTime + releaseTime) * 1000 + 100);
+                });
+
+                if (plateEnabled) {
+                    const plateNoiseDuration = 0.04 + brightness * 0.02;
+                    const plateBufferSize = audioCtx.sampleRate * plateNoiseDuration;
+                    const plateBuffer = audioCtx.createBuffer(1, plateBufferSize, audioCtx.sampleRate);
+                    const plateData = plateBuffer.getChannelData(0);
+                    for (let i = 0; i < plateBufferSize; i++) {
+                        plateData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / plateBufferSize, 3);
+                    }
+
+                    const plateNoise = audioCtx.createBufferSource();
+                    plateNoise.buffer = plateBuffer;
+
+                    const plateModalGain = audioCtx.createGain();
+                    plateModalGain.gain.value = 1.0;
+
+                    const plateLPF = audioCtx.createBiquadFilter();
+                    plateLPF.type = 'lowpass';
+                    plateLPF.frequency.value = 1500 + brightnessValue * 6000;
+                    plateLPF.Q.value = 0.7;
+
+                    plateModalGain.connect(plateLPF);
+                    plateLPF.connect(this.dryPanner);
+
+                    PLATE_MODEL.ratios.forEach((ratio, i) => {
+                        const modalFilter = audioCtx.createBiquadFilter();
+                        modalFilter.type = 'bandpass';
+                        modalFilter.frequency.value = this.freq * ratio;
+                        modalFilter.Q.value = PLATE_MODEL.q[i] * (0.3 + brightness * 0.4);
+
+                        const filterGain = audioCtx.createGain();
+                        filterGain.gain.value = PLATE_MODEL.gains[i] * velocity;
+
+                        plateNoise.connect(modalFilter);
+                        modalFilter.connect(filterGain);
+                        filterGain.connect(plateModalGain);
+                    });
+
+                    plateNoise.start(now);
+                    setTimeout(() => {
+                        plateModalGain.disconnect();
+                        plateLPF.disconnect();
+                    }, 400);
+                }
+            }
+
+            createExciter(velocity, brightness, now) {
+                const bufferSize = audioCtx.sampleRate * 0.05;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    const noise = (Math.random() * 2 - 1) *
+                        Math.exp(-i / (bufferSize * 0.1)) *
+                        Math.pow(1 - i / bufferSize, 2);
+                    data[i] = noise * velocity * 0.15;
+                }
+                const noiseSource = audioCtx.createBufferSource();
+                noiseSource.buffer = buffer;
+                const hpFilter = audioCtx.createBiquadFilter();
+                hpFilter.type = 'highpass';
+                hpFilter.frequency.value = 80;
+                hpFilter.Q.value = 0.7;
+                const lpFilter = audioCtx.createBiquadFilter();
+                lpFilter.type = 'lowpass';
+                lpFilter.frequency.value = 8000 + brightness * 4000;
+                lpFilter.Q.value = 0.5;
+                const exciterGain = audioCtx.createGain();
+                exciterGain.gain.setValueAtTime(velocity * 0.1, now);
+                exciterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                noiseSource.connect(hpFilter);
+                hpFilter.connect(lpFilter);
+                lpFilter.connect(exciterGain);
+                exciterGain.connect(this.panner);
+                noiseSource.start(now);
+                noiseSource.stop(now + 0.05);
+            }
+
+            stop() {
+                const now = audioCtx.currentTime;
+                this.oscillators.forEach(({ osc, gainNode }) => {
+                    gainNode.gain.linearRampToValueAtTime(0.00001, now + 0.5);
+                    osc.stop(now + 0.5);
+                });
+            }
+        }
+
+        // --- VISUAL ENGINE ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        class BowlVisual {
+            constructor(ratio, x, y, radius, index) {
+                this.ratioValue = ratio;
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.index = index;
+                this.vibration = 0;
+                this.glow = 0;
+                this.updateFreq();
+                this.voice = null;
+            }
+
+            updateFreq() {
+                const baseFreq = parseFloat(document.getElementById('freq-slider').value);
+                this.freq = baseFreq * this.ratioValue;
+                if (this.voice) {
+                    this.voice.updateBaseFreq(this.freq);
+                }
+            }
+
+            update() {
+                this.vibration *= 0.92;
+                this.glow *= 0.95;
+            }
+
+            draw() {
+                const alpha = 0.1 + this.glow * 0.5;
+                const vibX = (Math.random() - 0.5) * this.vibration * 10;
+                const vibY = (Math.random() - 0.5) * this.vibration * 10;
+
+                ctx.save();
+                ctx.translate(this.x + vibX, this.y + vibY);
+
+                const grad = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius * 1.5);
+                grad.addColorStop(0, `rgba(255, 255, 255, ${0.05 + this.glow * 0.2})`);
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + this.glow})`;
+                ctx.lineWidth = 2 + this.glow * 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = `rgba(255, 255, 255, 0.05)`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 0.3, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + this.glow})`;
+                ctx.font = '10px "Inter"';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.getRatioText(), 0, this.radius + 20);
+
+                ctx.restore();
+            }
+
+            getRatioText() {
+                const fractions = {
+                    1.1111: "10/9", 1.1428: "8/7", 1.2: "6/5", 1.25: "5/4",
+                    1.3333: "4/3", 1.375: "11/8", 1.5: "3/2", 1.5555: "14/9",
+                    1.6: "8/5", 1.75: "7/4", 1.7777: "16/9", 2: "2/1"
+                };
+                const val = Math.round(this.ratioValue * 10000) / 10000;
+                return fractions[val] || val.toFixed(2);
+            }
+
+            strike(x, y) {
+                if (!isAudioStarted) return;
+                if (!this.voice) {
+                    const pan = (this.x / canvas.width) * 2 - 1;
+                    this.voice = new BowlVoice(this.freq, pan);
+                }
+
+                const dx = x - this.x;
+                const dy = y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const normDist = 1 - Math.min(1, dist / this.radius);
+
+                this.vibration = 1.0;
+                this.glow = 1.0;
+
+                const velocity = 0.5 + normDist * 0.5;
+                const brightness = normDist * 0.8 + 0.2;
+                this.voice.strike(velocity, brightness);
+
+                ripples.push({
+                    x: this.x,
+                    y: this.y,
+                    r: this.radius,
+                    life: 1.0
+                });
+            }
+        }
+
+        function setupBowls() {
+            bowls = [];
+            const count = BOWL_RATIOS.length;
+            const w = canvas.width;
+            const h = canvas.height;
+            const isPortrait = h > w;
+
+            const minDim = Math.min(w, h);
+            const baseRadius = minDim * (isPortrait ? 0.06 : 0.05);
+
+            BOWL_RATIOS.forEach((ratio, i) => {
+                let x, y;
+                if (isPortrait) {
+                    const col = i % 2;
+                    const row = Math.floor(i / 2);
+                    const rowCount = Math.ceil(count / 2);
+
+                    const colSpacing = w * 0.45;
+                    x = (w - colSpacing) / 2 + (col * colSpacing);
+
+                    const vPadding = h * 0.15;
+                    const availableH = h - (2 * vPadding);
+                    y = vPadding + (row * (availableH / (rowCount - 1)));
+
+                    x += (Math.sin(i * 2) * 20);
+                } else {
+                    const hPadding = w * 0.12;
+                    const availableW = w - (2 * hPadding);
+                    x = hPadding + (i * (availableW / (count - 1)));
+
+                    y = h * 0.5 + Math.sin(i * 0.8) * h * 0.22;
+                    y += (i % 2 === 0 ? -15 : 15);
+                }
+
+                const size = baseRadius * (0.8 + 1.2 / ratio);
+                bowls.push(new BowlVisual(ratio, x, y, size, i));
+            });
+            window.bowls = bowls; // update global reference
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ripples = ripples.filter(r => r.life > 0.01);
+            ripples.forEach(r => {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${r.life * 0.2})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.r * (1 + (1 - r.life) * 3), 0, Math.PI * 2);
+                ctx.stroke();
+                r.life *= 0.95;
+            });
+
+            bowls.forEach(b => {
+                b.update();
+                b.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // --- INTERACTION ---
+        function handleInteraction(e) {
+            e.preventDefault();
+            const touches = e.touches ? Array.from(e.touches) : [e];
+
+            touches.forEach(t => {
+                const x = t.clientX || t.pageX;
+                const y = t.clientY || t.pageY;
+
+                bowls.forEach(b => {
+                    const dx = x - b.x;
+                    const dy = y - b.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < b.radius * 1.5) {
+                        b.strike(x, y);
+                    }
+                });
+            });
+        }
+
+        // --- INIT ---
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            setupBowls();
+        });
+
+        document.getElementById('init-btn').addEventListener('click', () => {
+            initAudio();
+            document.getElementById('init-overlay').classList.add('hidden');
+        });
+
+        document.getElementById('toggle-controls').addEventListener('click', () => {
+            document.getElementById('controls-container').classList.toggle('hidden');
+        });
+
+        document.getElementById('freq-slider').addEventListener('input', (e) => {
+            document.getElementById('freq-val').innerText = e.target.value;
+            bowls.forEach(b => b.updateFreq());
+        });
+
+        document.getElementById('skin-toggle').addEventListener('click', (e) => {
+            plateEnabled = !plateEnabled;
+            e.target.classList.toggle('active');
+            e.target.innerText = plateEnabled ? "On" : "Off";
+        });
+
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            while (next === 'Sceo') next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
+        }
+
+        canvas.addEventListener('touchstart', handleInteraction, { passive: false });
+        canvas.addEventListener('mousedown', handleInteraction);
+
+        // Start
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        setupBowls();
+        animate();
+
+    </script>
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!window.isAudioStarted) {
+                        document.getElementById('init-btn').click();
+                        // Wait a tiny bit for audio to initialise
+                        setTimeout(() => triggerNote(data), 50);
+                    } else {
+                        triggerNote(data);
+                    }
+                });
+
+                function triggerNote(data) {
+                    if (!window.bowls || !window.bowls.length) return;
+
+                    const numNotes = window.bowls.length;
+                    const index = data.note % numNotes;
+                    const vel = data.velocity / 127;
+
+                    const bowl = window.bowls[index];
+                    if (bowl) {
+                        // Use the bowl's strike method with its center coordinates
+                        bowl.strike(bowl.x, bowl.y);
+                        // Visual feedback (ripple is already added in strike)
+                    }
+                }
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    // Strike-based, no noteoff needed
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        if (window.masterGain) {
+                            window.masterGain.gain.setTargetAtTime(data.value / 127, window.audioCtx?.currentTime || 0, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+    <!-- /MIDI Integration -->
+
+</body>
+
+</html>

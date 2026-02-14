@@ -234,12 +234,22 @@
             height: 100%;
             background: rgba(0, 0, 0, 0.95);
             backdrop-filter: blur(20px);
-            z-index: 100;
+            z-index: 10000;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             transition: opacity 0.8s ease;
+            pointer-events: auto;
+        }
+
+        .header-center {
+            justify-self: center;
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+            position: relative;
+            z-index: 2000;
         }
 
         .start-btn {
@@ -335,10 +345,50 @@
         .range-indicator span {
             transform: rotate(180deg);
         }
+
+        #persistent-nav {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 10001; /* Increased to appear above start overlay (was 1000) */
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
     </style>
 </head>
 
 <body>
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
+
     <div class="touch-area" id="touch-area"></div>
     <canvas id="canvas"></canvas>
 
@@ -418,11 +468,11 @@
 
     <script>
         const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        const BASE_FREQ = 16.35; 
-        const BPM = 120;
+        const BASE_FREQ = 16.35;
+        let BPM = 120;
         const STEP_COUNT = 16;
-        const SECONDS_PER_BEAT = 60.0 / BPM;
-        const STEP_TIME = SECONDS_PER_BEAT / 4;
+        let SECONDS_PER_BEAT = 60.0 / BPM;
+        let STEP_TIME = SECONDS_PER_BEAT / 4;
         const RECORD_INTERVAL = 30;
 
         let state = {
@@ -512,8 +562,8 @@
             },
 
             nextNote() {
-                const secondsPerBeat = 60.0 / BPM;
-                state.nextNoteTime += 0.25 * secondsPerBeat;
+                SECONDS_PER_BEAT = 60.0 / BPM;
+                state.nextNoteTime += 0.25 * SECONDS_PER_BEAT;
                 state.current16thNote++;
                 if (state.current16thNote === STEP_COUNT) {
                     state.current16thNote = 0;
@@ -548,8 +598,8 @@
             },
 
             playScheduledNote(id, x, y, time, duration = 0.2, movements = []) {
-                const noteVal = 1 - y; 
-                const noteIndex = Math.floor(noteVal * 36); 
+                const noteVal = 1 - y;
+                const noteIndex = Math.floor(noteVal * 36);
                 const freq = BASE_FREQ * Math.pow(2, noteIndex / 12);
 
                 const osc = this.ctx.createOscillator();
@@ -612,7 +662,7 @@
 
             noteOn(id, x, y) {
                 const now = this.ctx.currentTime;
-                const noteVal = 1 - y; 
+                const noteVal = 1 - y;
                 const noteIndex = Math.floor(noteVal * 36);
                 const freq = BASE_FREQ * Math.pow(2, noteIndex / 12);
 
@@ -719,9 +769,9 @@
 
             setFilter(y, time = null) {
                 const now = time || this.ctx.currentTime;
-                const val = 1 - y; 
-                const minLog = Math.log(20);    
-                const maxLog = Math.log(10000); 
+                const val = 1 - y;
+                const minLog = Math.log(20);
+                const maxLog = Math.log(10000);
                 const scale = (maxLog - minLog);
                 const baseFreq = Math.exp(minLog + scale * val);
 
@@ -953,7 +1003,7 @@
             function startTouch(id, clientX, clientY) {
                 const controlsRect = document.getElementById('controls').getBoundingClientRect();
                 if (clientY > controlsRect.top) {
-                    return; 
+                    return;
                 }
 
                 const x = clientX / window.innerWidth;
@@ -1055,7 +1105,7 @@
             area.addEventListener('mousedown', (e) => {
                 const controlsRect = document.getElementById('controls').getBoundingClientRect();
                 if (e.clientY > controlsRect.top) {
-                    return; 
+                    return;
                 }
 
                 mouseId = 'mouse';
@@ -1112,27 +1162,77 @@
             }
         });
     </script>
-    <div id="nav-buttons"
-        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
-        <button onclick="window.location.href='../index.html'"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
-    </div>
+
+    <!-- MIDI Integration -->
+    <script src="../midi-handler.js"></script>
     <script>
-        function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan'];
-            let random = apps[Math.floor(Math.random() * apps.length)];
-            while (window.location.href.includes(random)) {
-                 random = apps[Math.floor(Math.random() * apps.length)];
-            }
-            window.location.href = '../' + random + '/';
-        }
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!state.isPlaying) return; // Global rule: check for manual init
+
+                    const noteId = "midi_" + data.note;
+                    const x = 0.5; // Center X for MIDI notes
+                    const y = (1 - (data.note / 127));
+                    const vel = data.velocity / 127;
+
+                    if (typeof Synth.noteOn === 'function') {
+                        Synth.noteOn(noteId, x, y);
+
+                        // Velocity to filter frequency too (low to high)
+                        Synth.setFilter(1 - vel); // 1-vel because 0 is high in our filter mapping
+
+                        // Visual feedback
+                        if (typeof Canvas.addRipple === 'function') {
+                            Canvas.addRipple(x * Canvas.w, y * Canvas.h, vel);
+                        }
+                    }
+                });
+
+                // Clock Sync
+                let lastClockBeat = 0;
+                let clockStartTime = 0;
+                window.MIDIHandler.on('beat', (data) => {
+                    const now = performance.now();
+                    if (clockStartTime > 0) {
+                        const duration = (now - clockStartTime) / data.beat;
+                        const bpm = Math.round(60000 / duration);
+                        if (bpm >= 30 && bpm <= 300) {
+                            BPM = bpm;
+                        }
+                    } else {
+                        clockStartTime = now;
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    const noteId = "midi_" + data.note;
+                    if (typeof Synth.noteOff === 'function') {
+                        Synth.noteOff(noteId);
+                    }
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        if (Synth.master) {
+                            Synth.master.gain.setTargetAtTime(data.value / 127, Synth.ctx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
     </script>
+    <!-- /MIDI Integration -->
+
 </body>
 
 </html>

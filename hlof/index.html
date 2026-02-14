@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MICROTONAL PERCUSSION</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000;
+            --surface: #0a0a0a;
+            --primary: #fff;
+            --accent: #eee;
+            --dim: #444;
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+            font-family: var(--font-main);
+            overflow: hidden;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            overscroll-behavior: none;
+        }
+
+        /* ===== PERSISTENT M/R BUTTONS (always visible) ===== */
+        #persistent-nav {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 10001; /* above start overlay */
+            pointer-events: auto;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ccc;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        /* Header (collapsible, hidden behind overlay initially) */
+        header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 24px 100px 24px 24px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            box-sizing: border-box;
+            flex-shrink: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.3s ease;
+        }
+
+        header.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .title-block {
+            justify-self: start;
+            text-align: left;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .title-text {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle-text {
+            font-weight: 300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+        }
+
+        .bpm-control {
+            justify-self: end;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #888;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-right: 20px;
+        }
+
+        .bpm-control input {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 80px;
+            height: 2px;
+            background: #333;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .bpm-control input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+        }
+
+        #bpm-display {
+            color: #fff;
+            min-width: 25px;
+        }
+
+        .title {
+            font-size: 11px;
+            letter-spacing: 4px;
+            font-weight: 400;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        #container {
+            flex-grow: 1;
+            position: relative;
+            touch-action: none;
+            cursor: crosshair;
+            overflow: hidden;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            filter: contrast(1.1);
+        }
+
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            gap: 20px;
+        }
+
+        .init-text {
+            color: #444;
+            font-size: 9px;
+            text-align: center;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+
+        .big-btn {
+            border: 1px solid #fff;
+            padding: 15px 40px;
+            font-size: 14px;
+            letter-spacing: 5px;
+            color: #fff;
+            background: transparent;
+            transition: 0.3s;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .big-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        /* Hide button (fixed, unchanged) */
+        #toggle-header {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2000;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-family: 'Josefin Sans', sans-serif;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Persistent M/R buttons (always on top) -->
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
+
+    <div id="start-overlay">
+        <button class="big-btn" id="init-btn">INITIALISE</button>
+        <div class="init-text">TAP TO PLAY · HOLD TO SUSTAIN</div>
+    </div>
+
+    <!-- Header (collapsible, hidden initially) -->
+    <header id="ui-header">
+        <div class="title-block">
+            <div class="title-text">HLOF</div>
+            <div class="subtitle-text">MICROTONAL PERCUSSION LAB</div>
+        </div>
+        <!-- M/R buttons removed from header – now in persistent nav -->
+        <div style="grid-column: 2; visibility: hidden;"></div> <!-- placeholder to keep grid spacing -->
+        <div class="bpm-control">
+            <span>BPM</span>
+            <input type="range" id="bpm-slider" min="40" max="220" value="105">
+            <span id="bpm-display">105</span>
+        </div>
+    </header>
+
+    <!-- Hide button (fixed, unchanged) -->
+    <button id="toggle-header"
+        style="position: fixed; top: 24px; right: 24px; z-index: 2000; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: 'Josefin Sans', sans-serif; backdrop-filter: blur(10px); transition: all 0.2s;">Hide</button>
+
+    <div id="container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        // (Your full, unchanged JavaScript from the original – all 700+ lines)
+        // ... (keep everything exactly as you had it) ...
+        let audioCtx, masterGain, compressor, reverbNodes = [], reverbFeedback;
+        let pingPongDelayL, pingPongDelayR, pingPongFeedback, pingPongMix;
+        let multiTaps = []; // Extra divisions
+        let octaveTap, octaveGain;
+        let bpm = 105;
+        let canvas, ctx, width, height;
+        let elements = [];
+        let activeTouches = new Map();
+        let activeOscillators = new Map(); // Track active oscillators per touch
+
+        // --- NEW: excitement (brightness accumulation) ---
+        let excitement = 0.0; // ranges 0..1, decays over time, increases with note rate
+
+        const partchScale = [
+            { r: 1 / 1, l: '1/1' }, { r: 81 / 80, l: '81/80' }, { r: 33 / 32, l: '33/32' }, { r: 21 / 20, l: '21/20' },
+            { r: 16 / 15, l: '16/15' }, { r: 12 / 11, l: '12/11' }, { r: 11 / 10, l: '11/10' }, { r: 10 / 9, l: '10/9' },
+            { r: 9 / 8, l: '9/8' }, { r: 8 / 7, l: '8/7' }, { r: 7 / 6, l: '7/6' }, { r: 32 / 27, l: '32/27' },
+            { r: 6 / 5, l: '6/5' }, { r: 11 / 9, l: '11/9' }, { r: 5 / 4, l: '5/4' }, { r: 14 / 11, l: '14/11' },
+            { r: 9 / 7, l: '9/7' }, { r: 21 / 16, l: '21/16' }, { r: 4 / 3, l: '4/3' }, { r: 27 / 20, l: '27/20' },
+            { r: 11 / 8, l: '11/8' }, { r: 7 / 5, l: '7/5' }, { r: 10 / 7, l: '10/7' }, { r: 16 / 11, l: '16/11' },
+            { r: 40 / 27, l: '40/27' }, { r: 3 / 2, l: '3/2' }, { r: 32 / 21, l: '32/21' }, { r: 14 / 9, l: '14/9' },
+            { r: 11 / 7, l: '11/7' }, { r: 8 / 5, l: '8/5' }, { r: 18 / 11, l: '18/11' }, { r: 5 / 3, l: '5/3' },
+            { r: 27 / 16, l: '27/16' }, { r: 12 / 7, l: '12/7' }, { r: 7 / 4, l: '7/4' }, { r: 16 / 9, l: '16/9' },
+            { r: 9 / 5, l: '9/5' }, { r: 20 / 11, l: '20/11' }, { r: 11 / 6, l: '11/6' }, { r: 15 / 8, l: '15/8' },
+            { r: 40 / 21, l: '40/21' }, { r: 64 / 33, l: '64/33' }, { r: 160 / 81, l: '160/81' }, { r: 2 / 1, l: '2/1' }
+        ];
+
+        const BASE_FREQ = 110.0; // A2 baseline
+
+        window.onload = () => {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            resize();
+            window.addEventListener('resize', resize);
+            document.getElementById('init-btn').onclick = initAudio;
+
+            canvas.addEventListener('pointerdown', handlePointerDown);
+            canvas.addEventListener('pointermove', handlePointerMove);
+            window.addEventListener('pointerup', handlePointerUp);
+            window.addEventListener('pointercancel', handlePointerUp);
+        };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight - 50;
+            initElements();
+        }
+
+        const slider = document.getElementById('bpm-slider');
+        const display = document.getElementById('bpm-display');
+        slider.oninput = () => {
+            bpm = slider.value;
+            display.innerText = bpm;
+            updateDelayTimes();
+        };
+
+        document.getElementById('toggle-header').onclick = () => {
+            const header = document.getElementById('ui-header');
+            const isHidden = header.classList.toggle('hidden');
+            document.getElementById('toggle-header').innerText = isHidden ? "Show" : "Hide";
+        };
+
+        function updateDelayTimes() {
+            if (!pingPongDelayL) return;
+            const beat = 60 / bpm;
+            const t = audioCtx.currentTime;
+
+            // Main Ping Pong (3/4 note)
+            pingPongDelayL.delayTime.setTargetAtTime(beat * 0.75, t, 0.1);
+            pingPongDelayR.delayTime.setTargetAtTime(beat * 0.75, t, 0.1);
+
+            // Extra rhythmic taps
+            const divisions = [0.25, 0.5, 0.375]; // 1/16, 1/8, dot-1/16
+            multiTaps.forEach((tap, i) => {
+                tap.delayTime.setTargetAtTime(beat * divisions[i], t, 0.1);
+            });
+
+            // Octave tap (fast 1/16 sync)
+            if (octaveTap) octaveTap.delayTime.setTargetAtTime(beat * 0.125, t, 0.1);
+        }
+
+        function initElements() {
+            elements = [];
+            const margin = 20;
+            const isNarrow = width < 500 || width < height * 0.8;
+
+            // 7 Artillery Casings (top row)
+            const casingW = (width - margin * 2) / 7;
+            const casingH = isNarrow ? Math.min(200, height * 0.2) : 200;
+            const casingY = isNarrow ? 55 : 80;
+            const casingPicks = [0, 8, 12, 14, 18, 25, 31];
+            for (let i = 0; i < 7; i++) {
+                const ratio = partchScale[casingPicks[i]];
+                elements.push({
+                    type: 'casing',
+                    x: margin + i * casingW, y: casingY,
+                    w: casingW - 5, h: casingH,
+                    idx: i, ratio: ratio.r, label: ratio.l
+                });
+            }
+
+            // 4 Cloud-Chamber Bowls (centered)
+            const bowlPicks = [0, 18, 25, 43];
+
+            for (let i = 0; i < 4; i++) {
+                const ratio = partchScale[bowlPicks[i]];
+                let bx, by, br;
+                if (isNarrow) {
+                    // Mobile: Massive circles
+                    br = width * 0.17;
+                    const col = i % 2;
+                    const row = Math.floor(i / 2);
+                    bx = width / 2 + (col - 0.5) * (br * 2.4);
+                    // Distribute vertically between top (casings) and bottom (blocks)
+                    const centerY = (casingY + casingH + (height - 120)) / 2;
+                    by = centerY + (row - 0.5) * (br * 2.5);
+                } else {
+                    // Desktop: Elegant line
+                    br = Math.min(width, height) * 0.10;
+                    bx = width / 2 + (i - 1.5) * (br * 2.4);
+                    by = height / 2 + 50;
+                }
+
+                elements.push({
+                    type: 'bowl',
+                    x: bx, y: by,
+                    r: br, idx: i, ratio: ratio.r, label: ratio.l
+                });
+            }
+
+            // 2 Woodblocks (bottom row)
+            const blockW = width * 0.35;
+            const blockPicks = [0, 8];
+            const blockLabels = ['1/1 (P)', '9/8 (R)'];
+            for (let i = 0; i < 2; i++) {
+                const ratio = partchScale[blockPicks[i]];
+                elements.push({
+                    type: 'block', x: width * 0.15 + i * (width * 0.35), y: height - 125,
+                    w: blockW, h: 45, idx: i, ratio: ratio.r * 0.5, label: blockLabels[i]
+                });
+            }
+
+            // Whang-Dep (bottom thin bar)
+            elements.push({
+                type: 'whang', x: 20, y: height - 55,
+                w: width - 40, h: 20, label: 'WHANG-DEP (1/1 - 2/1)'
+            });
+        }
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Initial input compressor to tame spikes
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -18;
+            compressor.ratio.value = 10;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.2;
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.5;
+
+            // Stable Cavernous Reverb: Parallel Comb Filters
+            reverbFeedback = audioCtx.createGain();
+            reverbFeedback.gain.value = 0.45; // Baseline sustain
+
+            const reverbLimiter = audioCtx.createDynamicsCompressor();
+            reverbLimiter.threshold.value = -10;
+            reverbLimiter.ratio.value = 20; // Hard limit for safety
+
+            const reverbSum = audioCtx.createGain();
+            reverbSum.gain.value = 0.12; // Normalized sum
+
+            // 10 distinct parallel taps for depth
+            const times = [0.097, 0.113, 0.137, 0.153, 0.177, 0.199, 0.223, 0.257, 0.289, 0.321];
+            times.forEach(t => {
+                const d = audioCtx.createDelay(1.0);
+                d.delayTime.value = t;
+
+                const damping = audioCtx.createBiquadFilter();
+                damping.type = 'lowpass';
+                damping.frequency.value = 2200; // Natural cavern damping
+
+                compressor.connect(d);
+                d.connect(damping);
+                damping.connect(reverbSum);
+                reverbNodes.push(d);
+            });
+
+            reverbSum.connect(reverbLimiter);
+            reverbLimiter.connect(reverbFeedback);
+            reverbFeedback.connect(compressor); // Single global Stable Feedback loop
+
+            // --- Sparkly Ping Pong Delay ---
+            pingPongDelayL = audioCtx.createDelay(2.0);
+            pingPongDelayR = audioCtx.createDelay(2.0);
+            pingPongFeedback = audioCtx.createGain();
+            pingPongFeedback.gain.value = 0.35;
+            pingPongMix = audioCtx.createGain();
+            pingPongMix.gain.value = 0.3; // Slightly more presence
+
+            const pingPongHPF = audioCtx.createBiquadFilter();
+            pingPongHPF.type = 'highpass';
+            pingPongHPF.frequency.value = 1000; // Higher for more sparkle
+
+            const pannerL = audioCtx.createStereoPanner();
+            pannerL.pan.value = -0.8;
+
+            const pannerR = audioCtx.createStereoPanner();
+            pannerR.pan.value = 0.8;
+
+            // Routing: Compressor -> L Delay -> R Delay -> L Delay...
+            compressor.connect(pingPongDelayL);
+            pingPongDelayL.connect(pingPongDelayR);
+            pingPongDelayR.connect(pingPongFeedback);
+            pingPongFeedback.connect(pingPongDelayL);
+
+            // Connect delay taps to their panners
+            pingPongDelayL.connect(pannerL);
+            pingPongDelayR.connect(pannerR);
+
+            pannerL.connect(pingPongHPF);
+            pannerR.connect(pingPongHPF);
+
+            // Multi-tap rhythmic extensions
+            [0.2, 0.15, 0.1].forEach((gVal, i) => {
+                const d = audioCtx.createDelay(2.0);
+                const g = audioCtx.createGain();
+                g.gain.value = gVal;
+                const p = audioCtx.createStereoPanner();
+                p.pan.value = (Math.random() * 2 - 1) * 0.6;
+
+                compressor.connect(d);
+                d.connect(p);
+                p.connect(g);
+                g.connect(pingPongHPF);
+                multiTaps.push(d);
+            });
+
+            // Octave-Up "Shimmer" Tap
+            // We'll simulate this with a high-pass filtered, very fast delay 
+            // and we'll manually boost the higher partials in the trigger for "sparkle"
+            octaveTap = audioCtx.createDelay(1.0);
+            octaveGain = audioCtx.createGain();
+            octaveGain.gain.value = 0.15;
+            const octaveFilter = audioCtx.createBiquadFilter();
+            octaveFilter.type = 'highpass';
+            octaveFilter.frequency.value = 2000;
+
+            compressor.connect(octaveTap);
+            octaveTap.connect(octaveFilter);
+            octaveFilter.connect(octaveGain);
+            octaveGain.connect(masterGain);
+
+            pingPongHPF.connect(pingPongMix);
+            pingPongMix.connect(masterGain);
+
+            updateDelayTimes();
+
+            // Direct + Reverb
+            compressor.connect(masterGain);
+            reverbFeedback.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            document.getElementById('start-overlay').style.display = 'none';
+            requestAnimationFrame(animate);
+        }
+
+        function handlePointerDown(e) {
+            e.preventDefault();
+            const pointerId = e.pointerId;
+            // Record startTime for dynamic duration-based decay
+            activeTouches.set(pointerId, { x: e.clientX, y: e.clientY, startTime: Date.now() });
+            updateFreeze();
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            elements.forEach(el => {
+                if (isInside(x, y, el)) {
+                    // --- NEW: increase excitement on each hit ---
+                    excitement = Math.min(1.0, excitement + 0.15);
+                    triggerSound(el, x, y, pointerId);
+                    el.active = true;
+                    setTimeout(() => el.active = false, 250);
+                }
+            });
+        }
+
+        function handlePointerMove(e) {
+            if (!audioCtx) return;
+            const pointerId = e.pointerId;
+            if (!activeTouches.has(pointerId)) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            elements.forEach(el => {
+                if (el.type === 'whang' && isInside(x, y, el)) {
+                    if (!el.lastTrigger || Date.now() - el.lastTrigger > 120) {
+                        // --- NEW: increase excitement on each whang hit ---
+                        excitement = Math.min(1.0, excitement + 0.1);
+                        playWhang(BASE_FREQ * (1 + (x / width)), null, audioCtx.currentTime, pointerId);
+                        el.lastTrigger = Date.now();
+                        el.active = true;
+                        setTimeout(() => el.active = false, 100);
+                    }
+                }
+            });
+        }
+
+        function handlePointerUp(e) {
+            const pointerId = e.pointerId;
+            const touchInfo = activeTouches.get(pointerId);
+            const duration = touchInfo ? (Date.now() - touchInfo.startTime) / 1000 : 0.1;
+
+            activeTouches.delete(pointerId);
+            updateFreeze();
+
+            if (activeOscillators.has(pointerId)) {
+                const nodes = activeOscillators.get(pointerId);
+                nodes.forEach(node => {
+                    const t = audioCtx.currentTime;
+                    // Dynamic release: longer touch = longer decay
+                    const releaseTime = Math.min(2.5, 0.1 + duration * 2.0);
+
+                    if (node.oscillator) {
+                        node.oscillator.stop(t + releaseTime + 0.1);
+                    }
+                    if (node.gain) {
+                        node.gain.gain.setTargetAtTime(0, t, releaseTime / 3);
+                    }
+                    if (node.lfo) {
+                        node.lfo.stop(t + releaseTime + 0.1);
+                    }
+                });
+                activeOscillators.delete(pointerId);
+            }
+        }
+
+        function updateFreeze() {
+            if (!reverbFeedback) return;
+            const t = audioCtx.currentTime;
+            // Safe freeze: 0.98 max for cavernous sustain
+            const fb = activeTouches.size > 0 ? 0.975 : 0.45;
+            reverbFeedback.gain.setTargetAtTime(fb, t, 0.15);
+        }
+
+        function isInside(x, y, el) {
+            if (el.type === 'bowl') {
+                const dist = Math.sqrt((x - el.x) ** 2 + (y - el.y) ** 2);
+                return dist < el.r;
+            } else {
+                return x > el.x && x < el.x + el.w && y > el.y && y < el.y + el.h;
+            }
+        }
+
+        function triggerSound(el, x, y, touchId) {
+            if (!audioCtx) return;
+            const t = audioCtx.currentTime;
+            const nodes = [];
+
+            let freq;
+            if (el.type === 'whang') {
+                const ratio = 1 + (x / width);
+                freq = BASE_FREQ * ratio;
+            } else {
+                freq = BASE_FREQ * (el.ratio || 1);
+            }
+
+            // Clear any existing oscillators for this touch
+            if (activeOscillators.has(touchId)) {
+                const oldNodes = activeOscillators.get(touchId);
+                oldNodes.forEach(node => {
+                    if (node.oscillator) {
+                        node.oscillator.stop(t);
+                        node.oscillator.disconnect();
+                    }
+                    if (node.gain) {
+                        node.gain.disconnect();
+                    }
+                });
+            }
+            activeOscillators.set(touchId, []);
+
+            // Main hit
+            triggerUnit(el, freq, nodes, t, touchId, false);
+
+            // MULTI-HARMONIC ECHOES (Ghost hits)
+            if (el.type !== 'whang') {
+                const beat = 60 / bpm;
+
+                // Octave 1 (freq * 2) - rhythmic backbone
+                const ghostTimes1 = [beat * 0.5, beat * 0.75, beat * 1.5]; // 1/8, 3/16, 3/8
+                ghostTimes1.forEach((delay, i) => {
+                    const ghostT = t + delay;
+                    const ghostVol = 0.22 * Math.exp(-i * 0.5);
+                    triggerUnit(el, freq * 2, nodes, ghostT, touchId, true, ghostVol);
+                });
+
+                // Octave 2 (freq * 4) - crystalline sparkles
+                const ghostTimes2 = [beat * 0.25, beat * 0.375, beat * 1.0, beat * 1.25]; // 1/16, dot-1/16, 1/4, 5/16
+                ghostTimes2.forEach((delay, i) => {
+                    const ghostT = t + delay;
+                    const ghostVol = 0.12 * Math.exp(-i * 0.7);
+                    triggerUnit(el, freq * 4, nodes, ghostT, touchId, true, ghostVol);
+                });
+            }
+
+            if (nodes.length > 0) {
+                activeOscillators.set(touchId, nodes);
+            }
+        }
+
+        function triggerUnit(el, freq, nodes, t, touchId, isGhost, vol = 1.0) {
+            if (el.type === 'casing') playMetallic(freq, nodes, t, touchId, isGhost, vol);
+            else if (el.type === 'bowl') playGlass(freq, nodes, t, touchId, isGhost, vol);
+            else if (el.type === 'block') playWood(freq, nodes, t, touchId, isGhost, vol);
+            else if (el.type === 'whang') playWhang(freq, nodes, t, touchId, isGhost, vol);
+        }
+
+        function playMetallic(freq, nodes, t, touchId, isGhost, vol = 1.0) {
+            // Added high "sparkle" partials for glockenspiel character
+            const partials = [1, 2.4, 3.8, 5.2, 6.5, 8.0, 11.2, 14.5];
+
+            // --- NEW: excitement modulates filter and partial gain ---
+            const excite = excitement; // 0..1
+            const filterBoost = 1 + excite * 2; // up to 3x cutoff
+            const highPartialBoost = 1 + excite * 2; // extra gain for high partials
+
+            // Percussive "strike" layer
+            if (!isGhost) {
+                const strikeNoise = audioCtx.createBufferSource();
+                const bSize = audioCtx.sampleRate * 0.02;
+                const b = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
+                const d = b.getChannelData(0);
+                for (let i = 0; i < bSize; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bSize * 0.1));
+                strikeNoise.buffer = b;
+                const sGain = audioCtx.createGain();
+                sGain.gain.setValueAtTime(0.5 * vol, t);
+                sGain.gain.exponentialRampToValueAtTime(0.001, t + 0.01);
+                const sFilter = audioCtx.createBiquadFilter();
+                sFilter.type = 'highpass';
+                sFilter.frequency.value = 5000 + excite * 3000; // brighter with excitement
+                strikeNoise.connect(sGain); sGain.connect(sFilter); sFilter.connect(compressor);
+                strikeNoise.start(t);
+            }
+
+            partials.forEach((p, i) => {
+                const osc = audioCtx.createOscillator();
+                // Use triangle for first few, sine for higher; with excitement, use more triangle
+                osc.type = (i < 3 || excite > 0.5) ? 'triangle' : 'sine';
+                osc.frequency.setValueAtTime(freq * p, t);
+
+                const pGain = audioCtx.createGain();
+                pGain.gain.setValueAtTime(0, t);
+                let baseG = (0.3 / (i + 1)) * (i > 4 ? 2.0 : 1.0) * vol;
+                // Boost high partials with excitement
+                if (i > 3) baseG *= highPartialBoost;
+                pGain.gain.linearRampToValueAtTime(baseG, t + 0.001);
+
+                if (isGhost) {
+                    // Ghosts fade out quickly, especially higher octaves
+                    const decay = freq > 400 ? 0.15 : 0.3;
+                    pGain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+                } else {
+                    pGain.gain.setTargetAtTime(baseG * 0.5, t + 0.002, 1.0);
+                }
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * p * 3.0 * filterBoost, t);
+                filter.Q.value = 0.5;
+
+                osc.connect(pGain);
+                pGain.connect(filter);
+                filter.connect(compressor);
+                osc.start(t);
+                if (isGhost) {
+                    const stopOffset = freq > 400 ? 0.2 : 0.4;
+                    osc.stop(t + stopOffset);
+                }
+
+                nodes.push({ oscillator: osc, gain: pGain });
+            });
+        }
+
+        function playGlass(freq, nodes, t, touchId, isGhost, vol = 1.0) {
+            const partials = [1, 1.8, 2.6, 3.4, 4.3, 7.1, 9.5];
+
+            // --- NEW: excitement modulation ---
+            const excite = excitement;
+            const filterBoost = 1 + excite * 2.5; // glass can be more extreme
+            const highPartialBoost = 1 + excite * 1.5;
+
+            partials.forEach((p, i) => {
+                const osc = audioCtx.createOscillator();
+                osc.frequency.setValueAtTime(freq * p, t);
+
+                const pGain = audioCtx.createGain();
+                pGain.gain.setValueAtTime(0, t);
+                let baseG = (0.2 / (i + 1)) * vol;
+                if (i > 2) baseG *= highPartialBoost; // boost higher partials
+                pGain.gain.linearRampToValueAtTime(baseG, t + 0.001);
+
+                if (isGhost) {
+                    const decay = freq > 400 ? 0.2 : 0.5;
+                    pGain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+                } else {
+                    pGain.gain.setTargetAtTime(baseG, t + 0.002, 2.0);
+                }
+
+                // Add a filter that opens with excitement
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * p * 2.0 * filterBoost, t);
+                filter.Q.value = 0.8;
+
+                osc.connect(pGain);
+                pGain.connect(filter);
+                filter.connect(compressor);
+                osc.start(t);
+                if (isGhost) {
+                    const stopOffset = freq > 400 ? 0.3 : 0.6;
+                    osc.stop(t + stopOffset);
+                }
+
+                nodes.push({ oscillator: osc, gain: pGain });
+            });
+        }
+
+        function playWood(freq, nodes, t, touchId, isGhost, vol = 1.0) {
+            // --- NEW: excitement makes wood brighter (more noise, higher filter) ---
+            const excite = excitement;
+
+            const osc = audioCtx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, t);
+
+            const g = audioCtx.createGain();
+            g.gain.setValueAtTime(1.5 * vol, t);
+
+            if (isGhost) {
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+            } else {
+                g.gain.setTargetAtTime(1.5 * vol, t + 0.001, 0.3);
+            }
+
+            if (!isGhost) {
+                const noise = audioCtx.createBufferSource();
+                const bufferSize = audioCtx.sampleRate * 0.08;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
+                noise.buffer = buffer;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.4 * vol * (1 + excite), t); // louder noise with excitement
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = freq * 3 + excite * 2000; // higher frequency when excited
+                filter.Q.value = 4;
+                noise.connect(nGain); nGain.connect(filter); filter.connect(compressor);
+                noise.start(t);
+            }
+
+            osc.connect(g);
+            g.connect(compressor);
+            osc.start(t);
+            if (isGhost) osc.stop(t + 0.2);
+
+            nodes.push({ oscillator: osc, gain: g });
+        }
+
+        function playWhang(freq, nodes, t, touchId, isGhost, vol = 1.0) {
+            // --- NEW: excitement makes whang more aggressive (more LFO depth) ---
+            const excite = excitement;
+
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.3, t + 1.5);
+
+            const lfo = audioCtx.createOscillator();
+            lfo.frequency.setValueAtTime(18, t);
+
+            const lfoGain = audioCtx.createGain();
+            lfoGain.gain.setValueAtTime(30 * vol * (1 + excite), t); // deeper wobble
+            lfoGain.gain.exponentialRampToValueAtTime(5 * vol, t + 1.0);
+
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+
+            const g = audioCtx.createGain();
+            g.connect(compressor);
+            g.gain.setValueAtTime(0.7 * vol, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+
+            osc.connect(g);
+            osc.start(t);
+            lfo.start(t);
+            if (isGhost) {
+                osc.stop(t + 0.5);
+                lfo.stop(t + 0.5);
+            }
+
+            if (nodes) nodes.push({ oscillator: osc, gain: g, lfo: lfo });
+        }
+
+        function animate() {
+            // --- NEW: excitement decays slowly over time ---
+            excitement *= 0.99; // decay per frame (~0.55 per second at 60fps)
+            if (excitement < 0.001) excitement = 0.0;
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Dynamic background glow
+            const activeCount = Array.from(activeOscillators.keys()).length;
+            const glowAmt = Math.min(0.15, activeCount * 0.03);
+            if (glowAmt > 0) {
+                ctx.fillStyle = `rgba(255,255,255,${glowAmt})`;
+                ctx.fillRect(0, 0, width, height);
+
+                // Add reverb visualization particles
+                for (let i = 0; i < activeCount * 3; i++) {
+                    const alpha = Math.random() * 0.1;
+                    const radius = Math.random() * 80 + 20;
+                    const x = Math.random() * width;
+                    const y = Math.random() * height;
+
+                    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                    gradient.addColorStop(0, `rgba(255,255,255,${alpha})`);
+                    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            elements.forEach(el => {
+                const isActive = el.active || activeOscillators.size > 0;
+                // --- NEW: excitement adds to brightness of the visuals too ---
+                const brightness = isActive ? 1.0 : 0.35 + excitement * 0.3;
+
+                ctx.lineWidth = isActive ? 3 : 1.5;
+                ctx.strokeStyle = `rgba(255,255,255,${brightness * 1.5})`;
+                ctx.fillStyle = `rgba(255,255,255,${isActive ? 0.4 + excitement * 0.3 : 0.05})`;
+
+                if (isActive) {
+                    ctx.shadowBlur = 35 + excitement * 30;
+                    ctx.shadowColor = '#fff';
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+
+                if (el.type === 'bowl') {
+                    // Rings with slight pulse if active
+                    const pulse = el.active ? Math.sin(Date.now() * 0.01) * 0.1 + 1 : 1;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.arc(el.x, el.y, el.r * (1 - i * 0.25) * pulse, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(255,255,255,${(brightness / (i + 1)) * 1.4})`;
+                        ctx.stroke();
+                    }
+                    if (el.active) {
+                        ctx.beginPath();
+                        ctx.arc(el.x, el.y, el.r * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else if (el.type === 'casing') {
+                    ctx.beginPath();
+                    ctx.moveTo(el.x + el.w * 0.5, el.y);
+                    ctx.lineTo(el.x + el.w, el.y + el.h * 0.85);
+                    ctx.lineTo(el.x + el.w * 0.5, el.y + el.h);
+                    ctx.lineTo(el.x, el.y + el.h * 0.85);
+                    ctx.closePath();
+                    ctx.stroke();
+                    if (el.active) ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(el.x + el.w * 0.5, el.y + 10);
+                    ctx.lineTo(el.x + el.w * 0.5, el.y + el.h - 10);
+                    ctx.strokeStyle = `rgba(255,255,255,${brightness * 0.4})`;
+                    ctx.stroke();
+                } else if (el.type === 'block') {
+                    const shift = 20;
+                    ctx.beginPath();
+                    ctx.moveTo(el.x + shift, el.y);
+                    ctx.lineTo(el.x + el.w + shift, el.y);
+                    ctx.lineTo(el.x + el.w, el.y + el.h);
+                    ctx.lineTo(el.x, el.y + el.h);
+                    ctx.closePath();
+                    ctx.stroke();
+                    if (el.active) ctx.fill();
+                } else if (el.type === 'whang') {
+                    const intensity = el.active ? 10 + excitement * 10 : 2;
+                    ctx.beginPath();
+                    ctx.moveTo(el.x, el.y + el.h / 2);
+                    for (let i = 0; i < 12; i++) {
+                        const wave = Math.sin(Date.now() * 0.004 + i) * intensity;
+                        ctx.lineTo(el.x + (i / 11) * el.w, el.y + el.h / 2 + wave);
+                    }
+                    ctx.stroke();
+                }
+
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = el.active ? '#fff' : `rgba(255,255,255,${brightness})`;
+                ctx.font = '600 11px Josefin Sans';
+                ctx.textAlign = 'center';
+                const labelY = el.type === 'bowl' ? el.y + el.r + 30 : el.y + el.h + 20;
+                if (el.type !== 'whang') {
+                    ctx.fillText(el.label, el.x + (el.w / 2 || 0), labelY);
+                }
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        function goToRandom() {
+            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'Sceo', 'Wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
+            let next = apps[Math.floor(Math.random() * apps.length)];
+            while (next === 'hlof') next = apps[Math.floor(Math.random() * apps.length)];
+            window.location.href = '../' + next + '/';
+        }
+    </script>
+
+    <!-- MIDI Integration (unchanged) -->
+    <script src="../midi-handler.js"></script>
+    <script>
+        (function () {
+            window.addEventListener('load', () => {
+                if (!window.MIDIHandler) {
+                    console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
+                    return;
+                }
+
+                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
+
+                // Note Mapping
+                window.MIDIHandler.on('noteon', (data) => {
+                    if (!audioCtx) {
+                        return; // Silently ignore MIDI until manually initialized
+                    }
+
+                    const numNotes = elements.length || 14;
+                    const index = data.note % numNotes;
+                    const vel = data.velocity / 127;
+
+                    const el = elements[index];
+                    if (el) {
+                        const x = el.x + (el.w || 0) / 2;
+                        const y = el.y + (el.h || 0) / 2;
+                        // --- NEW: increase excitement on MIDI note as well ---
+                        excitement = Math.min(1.0, excitement + 0.15);
+                        triggerSound(el, x, y, "midi_" + data.note);
+                        el.active = true;
+                        setTimeout(() => el.active = false, 250);
+                    }
+                });
+
+                window.MIDIHandler.on('noteoff', (data) => {
+                    handlePointerUp({ pointerId: "midi_" + data.note });
+                });
+
+                // CC Mapping
+                window.MIDIHandler.on('cc', (data) => {
+                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                        if (masterGain) {
+                            masterGain.gain.setTargetAtTime(data.value / 127, audioCtx.currentTime, 0.05);
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+
+</body>
+
+</html>
