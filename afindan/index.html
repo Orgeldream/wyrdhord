@@ -341,7 +341,8 @@
                 if (!audioInitialized) return;
 
                 const dist = Math.hypot(this.x - wanderer.x, this.y - wanderer.y);
-                const maxRange = 300;
+                // --- MODIFICATION: make the selection radius proportional to screen size and smaller ---
+                const maxRange = Math.min(width, height) * 0.15;  // was fixed 300
                 this.targetIntensity = Math.max(0, 1 - dist / maxRange);
                 this.intensity += (this.targetIntensity - this.intensity) * 0.1;
 
@@ -675,13 +676,6 @@
         // Initialize on load
         window.addEventListener('load', init);
     </script>
-
-
-
-
-
-
-
 
     <!-- MIDI Integration -->
     <script src="../midi-handler.js"></script>
