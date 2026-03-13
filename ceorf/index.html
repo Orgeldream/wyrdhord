@@ -89,6 +89,12 @@
             justify-content: flex-end;
         }
 
+        .init-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 1.5s ease;
+        }
+
         /* Buttons and upload label – unified style */
 
 
@@ -236,7 +242,7 @@
             <button class="nav-btn" onclick="goToMenu()">M</button>
             <button class="nav-btn" onclick="goToRandom()">R</button>
         </div>
-        <div class="nav-right">
+        <div class="nav-right init-hidden">
             <label class="upload-btn">
                 LOAD AUDIO
                 <input type="file" id="file-input" accept="audio/*">
@@ -637,6 +643,7 @@
                     await this.audio.init();
                     document.getElementById('start-overlay').style.opacity = 0;
                     setTimeout(() => document.getElementById('start-overlay').remove(), 800);
+                    document.querySelector('.nav-right').classList.remove('init-hidden');
                     this.startLoop();
                 });
 

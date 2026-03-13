@@ -70,6 +70,12 @@
             pointer-events: auto;
         }
 
+        .init-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 1.5s ease;
+        }
+
         .title-block {
             position: fixed;
             top: 24px;
@@ -78,7 +84,7 @@
             text-align: left;
             opacity: 0.8;
             transition: opacity 0.3s ease;
-            z-index: 1000;
+            z-index: 1;
             pointer-events: none;
         }
 
@@ -242,15 +248,14 @@
         <div class="hint">Bronzeworks in the dark</div>
     </div>
 
-    <div id="persistent-nav"
-        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10000;">
+    <div id="persistent-nav">
         <button class="nav-btn" onclick="goToMenu()">M</button>
         <button class="nav-btn" onclick="goToRandom()">R</button>
     </div>
 
     <div class="ui-layer" id="ui-layer">
         <div class="header">
-            <div class="title-block">
+            <div class="title-block init-hidden">
                 <div class="title-text">HEARG</div>
                 <div class="subtitle-text">RESONANT BRONZE SURFACE</div>
             </div>
@@ -469,6 +474,7 @@
             bubblerReverbGain.connect(masterGain);
 
             document.getElementById('start-overlay').style.display = 'none';
+            document.querySelector('.title-block').classList.remove('init-hidden');
 
             // Start Bubbler Scheduler
             scheduleBubbler();
