@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../nav.css">
     <style>
         :root {
             --bg-color: #000000;
@@ -60,28 +61,17 @@
             padding: 24px;
         }
 
+        /* title-block is a flex item in .ui-layer column; keep it in flow */
+        .title-block {
+            position: static;
+            opacity: 0.8;
+        }
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             pointer-events: none;
-        }
-
-        .title {
-            font-weight: 600;
-            font-size: 24px;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            mix-blend-mode: difference;
-        }
-
-        .subtitle {
-            font-weight: 300;
-            font-size: 12px;
-            letter-spacing: 2px;
-            color: var(--accent-color);
-            margin-top: 4px;
-            text-transform: uppercase;
         }
 
         .controls {
@@ -136,31 +126,9 @@
             opacity: 1;
         }
 
-        #start-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s ease;
-        }
 
-        .start-msg {
-            font-size: 16px;
-            letter-spacing: 4px;
-            animation: pulse 2s infinite;
-            cursor: pointer;
-            text-align: center;
-            padding: 0 20px;
-            text-transform: uppercase;
-        }
+
+
 
         @keyframes pulse {
             0% {
@@ -175,16 +143,21 @@
                 opacity: 0.5;
             }
         }
+
+
     </style>
+    <script src="../nav.js"></script>
 </head>
 
 <body>
+  
+
     <canvas id="canvas"></canvas>
 
     <div class="ui-layer">
-        <div class="header">
+        <div class="title-block">
             <div>
-                <div class="title">Hrisian</div>
+                <div class="title">HRISIAN</div>
                 <div class="subtitle">Resonant Body</div>
             </div>
         </div>
@@ -200,11 +173,14 @@
     </div>
 
     <div id="start-overlay">
-        <div class="start-msg">Tap to initialise<br><br><span
-                style="font-size: 12px; margin-top: 10px; display: block;">Touch to stimulate<br><br>Left/right: Damping
-                & Reverb Mix<br><br>Up/down: Reverb Size</span></div>
+        <button class="start-btn">INITIALISE</button>
+        <div class="hint">TOUCH TO STIMULATE<br>LEFT/RIGHT: DAMPING &amp; REVERB MIX<br>UP/DOWN: REVERB SIZE</div>
     </div>
-
+     <div id="persistent-nav"
+        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
+        <button class="nav-btn" onclick="goToMenu()">M</button>
+        <button class="nav-btn" onclick="goToRandom()">R</button>
+    </div>
     <script>
 
         const PHYSICS_MODELS = {
@@ -732,28 +708,7 @@
 
         window.onload = () => { window.app = new App(); };
     </script>
-    <div id="nav-buttons"
-        style="position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 8px; pointer-events: auto;">
-        <button onclick="window.location.href='../index.html'"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">M</button>
-        <button onclick="randomApp()"
-            style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #aaa; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-family: sans-serif; font-size: 10px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff'"
-            onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.color='#aaa'">R</button>
-    </div>
-    <script>
-        function randomApp() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'sceo', 'wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
-            let random = apps[Math.floor(Math.random() * apps.length)];
-            while (window.location.href.includes(random)) {
-                random = apps[Math.floor(Math.random() * apps.length)];
-            }
-            window.location.href = '../' + random + '/';
-        }
-    </script>
-
+ 
 
 
 

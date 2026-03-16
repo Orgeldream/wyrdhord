@@ -5,10 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BAMBOO MARIMBA</title>
+    <link rel="stylesheet" href="../nav.css">
     <style>
         :root {
             --bg-color: #050505;
-            --text-color: #cccccc;
+            --text-color: #ffffff;
             --accent-color: #888888;
             --font-main: 'Inter', system-ui, -apple-system, sans-serif;
             --tube-color: #222222;
@@ -63,38 +64,8 @@
             pointer-events: none;
         }
 
-        /* ===== PERSISTENT M/R BUTTONS (always on top) ===== */
-        #persistent-nav {
-            position: fixed;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 12px;
-            z-index: 2000; /* above overlay (100) */
-            pointer-events: auto;
-        }
 
-        .nav-btn {
-            background: var(--ui-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            backdrop-filter: blur(8px);
-            transition: all 0.3s ease;
-        }
 
-        .nav-btn:hover {
-            background: #fff;
-            color: #000;
-        }
 
         /* ===== HEADER LAYOUT (three‑column grid) ===== */
         .header {
@@ -113,60 +84,16 @@
             /* empty spacer */
         }
 
-        .header-center {
-            justify-self: center;
-            /* placeholder – buttons removed */
-            pointer-events: none;
-        }
 
         .header-right {
             justify-self: end;
             pointer-events: auto;
         }
 
-        #toggle-controls {
-            font-size: 11px;
-            background: transparent;
-            border: none;
-            color: #fff;
-            opacity: 0.3;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: opacity 0.3s;
-            z-index: 20;
-        }
 
-        #toggle-controls:hover {
-            opacity: 1;
-        }
 
         /* Title group (left) */
-        .title-group {
-            position: fixed;
-            top: 24px;
-            left: 24px;
-            text-align: left;
-            opacity: 0.8;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .title {
-            font-weight: 600;
-            font-size: 14px;
-            letter-spacing: 4px;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-        }
-
-        .subtitle {
-            font-weight: 300;
-            font-size: 10px;
-            letter-spacing: 2px;
-            color: var(--accent-color);
-            text-transform: uppercase;
-        }
+   
 
         /* ===== CONTROLS AT BOTTOM ===== */
         #controls {
@@ -215,11 +142,13 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             opacity: 0.5;
+            padding-bottom: 5px;
         }
 
         .control-value {
             font-size: 9px;
             font-variant-numeric: tabular-nums;
+            padding-bottom: 5px;
         }
 
         input[type="range"] {
@@ -258,35 +187,9 @@
             border-color: #fff;
         }
 
-        #init-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-color);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
 
-        .init-title {
-            font-size: 42px;
-            letter-spacing: 16px;
-            font-weight: 200;
-            margin-bottom: 40px;
-        }
 
-        .init-hint {
-            font-size: 11px;
-            letter-spacing: 4px;
-            opacity: 0.4;
-            text-transform: uppercase;
-            animation: pulse-init 2s infinite ease-in-out;
-        }
+
 
         @keyframes pulse-init {
 
@@ -310,23 +213,9 @@
                 min-width: 120px;
                 padding: 6px 8px;
             }
-
-            .title {
-                font-size: 20px;
-                letter-spacing: 4px;
-            }
         }
 
         @media (min-width: 1024px) {
-            .title {
-                font-size: 32px;
-                letter-spacing: 8px;
-            }
-
-            .subtitle {
-                font-size: 12px;
-            }
-
             .control-label {
                 font-size: 10px;
             }
@@ -335,19 +224,15 @@
                 font-size: 11px;
             }
 
-            .nav-btn {
-                width: 44px;
-                height: 44px;
-                font-size: 14px;
-            }
         }
     </style>
+    <script src="../nav.js"></script>
 </head>
 
 <body>
     <!-- Persistent M/R buttons (always on top) -->
     <div id="persistent-nav">
-        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToMenu()">M</button>
         <button class="nav-btn" onclick="goToRandom()">R</button>
     </div>
 
@@ -359,11 +244,11 @@
             <div class="header-left"></div>
             <div class="header-center"></div> <!-- placeholder for grid spacing -->
             <div class="header-right">
-                <button id="toggle-controls">Controls</button>
+                <button id="toggle-controls" class="right-btn">Controls</button>
             </div>
         </div>
 
-        <div class="title-group">
+        <div class="title-block">
             <div class="title">Wudubora</div>
             <div class="subtitle">64-TUBE BAMBOO MARIMBA</div>
         </div>
@@ -411,8 +296,8 @@
     </div>
 
     <div id="init-overlay">
-        <div class="init-title">INITIALISE</div>
-        <div class="init-hint">Tap to awaken</div>
+        <button class="start-btn">INITIALISE</button>
+        <div class="hint">64-TUBE BAMBOO MARIMBA</div>
     </div>
 
     <script>
@@ -949,12 +834,6 @@
             };
         };
 
-        function goToRandom() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'sceo', 'wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
-            let next = apps[Math.floor(Math.random() * apps.length)];
-            while (next === 'wudubora') next = apps[Math.floor(Math.random() * apps.length)];
-            window.location.href = '../' + next + '/';
-        }
     </script>
 
     <!-- MIDI Integration (unchanged) -->
