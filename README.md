@@ -7,6 +7,6 @@ If you are using the web apps in Chrome and are signed in, you will be able to l
 
 All apps set to recieve MIDI on omni channel so you can sequence them with your DAW or whatever.
 
-The apps should work on all browser equipped devices, still some tweaks/fixes to do in the UI!
+The apps should work on all browser equipped devices.
 
 Please send or link me to anything you create with them!
