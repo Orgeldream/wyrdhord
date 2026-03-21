@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cloud-Chamber Bowls</title>
+    <title>SCEO</title>
     <link rel="stylesheet" href="../nav.css">
     <style>
         :root {
@@ -395,7 +395,7 @@
                     plateNoise.buffer = plateBuffer;
 
                     const plateModalGain = audioCtx.createGain();
-                    plateModalGain.gain.value = 1.0;
+                    plateModalGain.gain.value = 8.0;
 
                     const plateLPF = audioCtx.createBiquadFilter();
                     plateLPF.type = 'lowpass';
