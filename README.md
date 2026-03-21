@@ -1,4 +1,4 @@
-WYRDHORD - a collection of web-based sound instruments that explore touch, feedback, degradation, and emergence.
+WYRDHORD - a collection of web-based sound instruments that explore touch, feedback, degradation, microtones and emergence.
 
 https://wyrdhord.orgeldream.com
 
