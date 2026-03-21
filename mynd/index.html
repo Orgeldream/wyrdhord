@@ -1,1104 +1,947 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>MYND</title>
+    <title>MYND — LOOP & DEGRADE</title>
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../nav.css">
     <style>
-        :root {
-            --bg-color: #000000;
-            --text-color: #ffffff;
-            --accent-color: #888888;
-            --font-main: 'Josefin Sans', sans-serif;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-```
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-    }
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Josefin Sans', sans-serif;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
 
-    body {
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        font-family: var(--font-main);
-        height: 100vh;
-        height: 100dvh;
-        width: 100vw;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        user-select: none;
-    }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            touch-action: none;
+        }
 
-    #canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-        touch-action: none;
-    }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
 
-    .ui-layer {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 10;
-        pointer-events: none;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: 20px;
-    }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
 
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        pointer-events: none;
-    }
+        .title {
+            font-weight: 600;
+            font-size: 1.4rem;
+            letter-spacing: 4px;
+        }
 
-    .controls {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        align-items: center;
-        pointer-events: auto;
-    }
+        .subtitle {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
 
-    .param-display {
-        background: rgba(0, 0, 0, 0.7);
-        padding: 12px 20px;
-        border-radius: 8px;
-        text-align: center;
-        backdrop-filter: blur(5px);
-        border: 1px solid #444;
-        width: 100%;
-        max-width: 300px;
-    }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            pointer-events: auto;
+        }
 
-    .param-row {
-        font-size: 12px;
-        letter-spacing: 2px;
-        margin: 4px 0;
-        text-transform: uppercase;
-        text-shadow: 0 0 10px #000;
-    }
+        .param-display {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            border: 1px solid #444;
+            width: 100%;
+            max-width: 300px;
+        }
 
-    .control-btn {
-        font-size: 14px;
-        letter-spacing: 2px;
-        border: 1px solid #444;
-        padding: 12px 24px;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-transform: uppercase;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(5px);
-        min-width: 160px;
-        text-align: center;
-    }
+        .param-row {
+            font-size: 12px;
+            letter-spacing: 2px;
+            margin: 4px 0;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px #000;
+        }
 
-    .control-btn:hover {
-        background: #222;
-        border-color: #888;
-    }
+        .control-btn {
+            font-size: 14px;
+            letter-spacing: 2px;
+            border: 1px solid #444;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            min-width: 160px;
+            text-align: center;
+            font-family: inherit;
+        }
 
-    .control-btn.active {
-        background: #333;
-        border-color: #fff;
-    }
+        .control-btn:hover {
+            background: #222;
+            border-color: #888;
+        }
 
-    .mobile-hint {
-        font-size: 10px;
-        color: var(--accent-color);
-        letter-spacing: 1px;
-        text-align: center;
-        line-height: 1.8;
-    }
+        .control-btn.active {
+            background: #333;
+            border-color: #fff;
+        }
 
-    .recording-indicator {
-        width: 20px;
-        height: 20px;
-        background-color: #ff0000;
-        border-radius: 50%;
-        animation: recording-pulse 1s infinite;
-        display: none;
-    }
+        .recording-indicator {
+            width: 20px;
+            height: 20px;
+            background-color: #ff0000;
+            border-radius: 50%;
+            animation: recording-pulse 1s infinite;
+            display: none;
+        }
 
-    .touch-indicator {
-        position: absolute;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid white;
-        pointer-events: none;
-        z-index: 5;
-        display: none;
-    }
+        .touch-indicator {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
 
-    @keyframes pulse {
-        0% { opacity: 0.5; }
-        50% { opacity: 1; }
-        100% { opacity: 0.5; }
-    }
+        @keyframes recording-pulse {
+            0% { opacity: 0.3; transform: scale(1);}
+            50% { opacity: 1; transform: scale(1.1);}
+            100% { opacity: 0.3; transform: scale(1);}
+        }
 
-    @keyframes recording-pulse {
-        0% { opacity: 0.3; }
-        50% { opacity: 1; }
-        100% { opacity: 0.3; }
-    }
+        /* START OVERLAY */
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            backdrop-filter: blur(8px);
+            transition: opacity 0.4s ease;
+            pointer-events: auto;
+        }
 
-    @media (max-width: 768px) {
-        .ui-layer { padding: 16px; }
-        .control-btn { font-size: 12px; padding: 10px 20px; min-width: 140px; }
-    }
-</style>
-<script src="../nav.js"></script>
-```
+        .start-btn {
+            background: rgba(20,20,20,0.9);
+            border: 1.5px solid #fff;
+            color: white;
+            font-family: 'Josefin Sans', sans-serif;
+            font-size: 1.6rem;
+            letter-spacing: 6px;
+            padding: 18px 48px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
 
+        .start-btn:hover {
+            background: #222;
+            transform: scale(1.02);
+        }
+
+        .hint {
+            text-align: center;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .ui-layer { padding: 16px; }
+            .control-btn { font-size: 12px; padding: 10px 20px; min-width: 140px; }
+            .start-btn { font-size: 1.2rem; padding: 14px 32px; }
+        }
+
+        #persistent-nav {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 50;
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+        .nav-btn {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid #555;
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .nav-btn:hover {
+            background: #222;
+            border-color: white;
+        }
+    </style>
 </head>
-
 <body>
     <canvas id="canvas"></canvas>
     <div class="touch-indicator" id="touch-indicator"></div>
 
-```
-<div class="ui-layer">
-    <div class="header">
-        <div>
-            <div class="title">MYND</div>
-            <div class="subtitle">LOOP AND DEGRADE</div>
+    <div class="ui-layer">
+        <div class="header">
+            <div>
+                <div class="title">MYND</div>
+                <div class="subtitle">LOOP AND DEGRADE</div>
+            </div>
+            <div class="recording-indicator" id="rec-indicator"></div>
         </div>
-        <div class="recording-indicator" id="rec-indicator"></div>
+
+        <div class="controls">
+            <div class="param-display">
+                <div class="param-row">LOOPS: <span id="val-loops">0</span></div>
+                <div class="param-row">DEGRADE: <span id="val-degrade">0%</span></div>
+                <div class="param-row">GRIT: <span id="val-grit">0%</span></div>
+                <div class="param-row">PAN: <span id="val-pan">CENTER</span></div>
+            </div>
+            <div id="record-btn" class="control-btn">RECORD: OFF</div>
+            <div id="clear-btn" class="control-btn">CLEAR LOOPS</div>
+        </div>
     </div>
 
-    <div class="controls">
-        <div class="param-display">
-            <div class="param-row">LOOPS: <span id="val-loops">0</span></div>
-            <div class="param-row">DEGRADE: <span id="val-degrade">0%</span></div>
-            <div class="param-row">GRIT: <span id="val-grit">0%</span></div>
-            <div class="param-row">PAN: <span id="val-pan">CENTER</span></div>
-        </div>
-        <div id="record-btn" class="control-btn">RECORD: OFF</div>
-        <div id="clear-btn" class="control-btn">CLEAR LOOPS</div>
+    <div id="start-overlay">
+        <button class="start-btn">INITIALISE</button>
+        <div class="hint">RECORD LOOPS<br>TOUCH X: DEGRADATION<br>TOUCH Y: DENSITY</div>
     </div>
-</div>
 
-<div id="start-overlay">
-    <button class="start-btn">INITIALISE</button>
-    <div class="hint">RECORD LOOPS<br>TOUCH X: DEGRADATION<br>TOUCH Y: DENSITY</div>
-</div>
+    <div id="persistent-nav">
+        <button class="nav-btn" onclick="if(window.goToMenu) goToMenu()">M</button>
+        <button class="nav-btn" onclick="if(window.goToRandom) goToRandom()">R</button>
+    </div>
 
-<script>
-    // FIX: use a small curve (512 samples) — 44100 was wasteful and GC-heavy
-    function makeDistortionCurve(amount) {
-        const k = amount * 150;
-        const n_samples = 512;
-        const curve = new Float32Array(n_samples);
-        for (let i = 0; i < n_samples; ++i) {
-            const x = i * 2 / n_samples - 1;
-            curve[i] = Math.tanh(x * (1 + k * 0.5));
-        }
-        return curve;
-    }
-
-    // FIX: how many loops are active, used to scale per-loop gain down
-    const MAX_LOOPS = 6;
-
-    class TapeLoopEngine {
-        constructor() {
-            this.ctx = null;
-            this.masterGain = null;
-            this.compressor = null;
-            this.analyser = null;
-            this.limiter = null;
-
-            this.mediaRecorder = null;
-            this.audioChunks = [];
-            this.isRecording = false;
-            this.recordedBuffers = [];
-            this.loopSources = [];
-            this.loopGains = [];
-            this.loopFilters = [];
-            this.loopGrains = [];
-            this.loopPanners = [];
-            this.loopShapers = [];
-
-            this.loopCount = 0;
-            this.degradeAmount = 0;
-            this.gritAmount = 0;
-            this.currentFilterCutoff = 8000;
-            this.currentGrainDensity = 0.5;
-            this.currentPlaybackRate = 1.0;
-            this.panAmount = 0;
-            this.recordingLength = 8;
-
-            this.inputGain = null;
-            this.recordingGain = null;
-            this.microphoneSource = null;
-            this.recorder = null;
-
-            this.distortionCurve = makeDistortionCurve(0);
-            this.lastDistortionAmount = -1; // FIX: track last value to avoid rebuilding every frame
-
-            this.unlocked = false;
-            this._unlockHandler = this._unlockHandler.bind(this);
-
-            this.isInitialized = false;
+    <script>
+        // --------------------------------------------------------------
+        //  UTILS: distortion curve (efficient)
+        // --------------------------------------------------------------
+        function makeDistortionCurve(amount) {
+            const k = amount * 150;
+            const n_samples = 512;
+            const curve = new Float32Array(n_samples);
+            for (let i = 0; i < n_samples; ++i) {
+                const x = i * 2 / n_samples - 1;
+                curve[i] = Math.tanh(x * (1 + k * 0.5));
+            }
+            return curve;
         }
 
-        init() {
-            if (this.ctx) return;
+        // --------------------------------------------------------------
+        //  MAIN AUDIO ENGINE (fixed syntax + proper this bindings)
+        // --------------------------------------------------------------
+        class TapeLoopEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.compressor = null;
+                this.analyser = null;
+                this.limiter = null;
+                this.touchFilter = null;      // master lowpass (Y control)
 
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            this.ctx = new AudioContext();
+                this.mediaRecorder = null;
+                this.audioChunks = [];
+                this.isRecording = false;
+                this.recordedBuffers = [];
+                this.loopSources = [];
+                this.loopGains = [];
+                this.loopFilters = [];
+                this.loopGrains = [];
+                this.loopPanners = [];
+                this.loopShapers = [];
 
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) {
-                    if (this.ctx.state === 'running') this.ctx.suspend();
-                } else {
-                    if (this.ctx.state === 'suspended') this.ctx.resume();
-                }
-            });
+                this.loopCount = 0;
+                this.degradeAmount = 0;
+                this.gritAmount = 0;
+                this.currentFilterCutoff = 8000;
+                this.currentGrainDensity = 0.5;
+                this.currentPlaybackRate = 1.0;
+                this.panAmount = 0;
+                this.recordingLength = 8;
 
-            ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(evt => {
-                document.body.addEventListener(evt, this._unlockHandler, { passive: false, capture: true });
-            });
+                this.inputGain = null;
+                this.recordingGain = null;
+                this.microphoneSource = null;
+                this.recorder = null;
 
-            this.setupAudioGraph();
-            this.setupMicrophone();
-            this.isInitialized = true;
-        }
+                this.distortionCurve = makeDistortionCurve(0);
+                this.lastDistortionAmount = -1;
+                this.unlocked = false;
+                this.isInitialized = false;
+                this._unlockHandler = this._unlockHandler.bind(this);
+            }
 
-        _unlockHandler(e) {
-            if (this.unlocked || !this.ctx) return;
-            this.ctx.resume().then(() => {
-                if (this.ctx.state === 'running') {
-                    this.unlocked = true;
-                    this._removeUnlockListeners();
-                }
-            });
-            const buffer = this.ctx.createBuffer(1, 1, 22050);
-            const source = this.ctx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(this.ctx.destination);
-            source.start(0);
-        }
+            init() {
+                if (this.ctx) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
 
-        _removeUnlockListeners() {
-            ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(evt => {
-                document.body.removeEventListener(evt, this._unlockHandler, { capture: true });
-            });
-        }
-
-        setupAudioGraph() {
-            // Hard limiter — brickwall ceiling, last node before destination
-            this.limiter = this.ctx.createDynamicsCompressor();
-            this.limiter.threshold.value = -2;
-            this.limiter.knee.value = 0;
-            this.limiter.ratio.value = 20;
-            this.limiter.attack.value = 0.001;
-            this.limiter.release.value = 0.05;
-            this.limiter.connect(this.ctx.destination);
-
-            // Compressor — tighter ratio and lower threshold to catch overloads
-            this.compressor = this.ctx.createDynamicsCompressor();
-            this.compressor.threshold.value = -24;
-            this.compressor.knee.value = 6;
-            this.compressor.ratio.value = 16;
-            this.compressor.attack.value = 0.001;
-            this.compressor.release.value = 0.1;
-            this.compressor.connect(this.limiter);
-
-            // Touch-controlled master lowpass — starts open, closes as Y rises
-            this.touchFilter = this.ctx.createBiquadFilter();
-            this.touchFilter.type = 'lowpass';
-            this.touchFilter.frequency.value = 18000;
-            this.touchFilter.Q.value = 0.5;
-            this.touchFilter.connect(this.compressor);
-
-            this.masterGain = this.ctx.createGain();
-            this.masterGain.gain.value = 0.15;
-            this.masterGain.connect(this.touchFilter);
-
-            this.analyser = this.ctx.createAnalyser();
-            this.analyser.fftSize = 2048;
-            this.masterGain.connect(this.analyser);
-        }
-
-        async setupMicrophone() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: false
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        if (this.ctx.state === 'running') this.ctx.suspend();
+                    } else {
+                        if (this.ctx.state === 'suspended') this.ctx.resume();
                     }
                 });
 
-                this.microphoneSource = this.ctx.createMediaStreamSource(stream);
+                ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(evt => {
+                    document.body.addEventListener(evt, this._unlockHandler, { passive: false, capture: true });
+                });
 
-                this.inputGain = this.ctx.createGain();
-                this.inputGain.gain.value = 1.0;
-                this.microphoneSource.connect(this.inputGain);
-
-                this.recordingGain = this.ctx.createGain();
-                this.recordingGain.gain.value = 0;
-                this.inputGain.connect(this.recordingGain);
-
-                console.log("Microphone setup successful");
-            } catch (err) {
-                console.error("Error accessing microphone:", err);
-            }
-        }
-
-        startRecording() {
-            if (!this.ctx || this.isRecording) return;
-
-            this.isRecording = true;
-            this.audioChunks = [];
-
-            document.getElementById('rec-indicator').style.display = 'block';
-
-            const bufferSize = 4096;
-            this.recorder = this.ctx.createScriptProcessor(bufferSize, 1, 1);
-
-            this.recorder.onaudioprocess = (event) => {
-                if (!this.isRecording) return;
-
-                const inputData = event.inputBuffer.getChannelData(0);
-                const outputData = event.outputBuffer.getChannelData(0);
-
-                for (let i = 0; i < inputData.length; i++) {
-                    outputData[i] = 0;
-                }
-
-                const copy = new Float32Array(inputData.length);
-                copy.set(inputData);
-                this.audioChunks.push(copy);
-
-                const recordedSeconds = this.audioChunks.length * bufferSize / this.ctx.sampleRate;
-                if (recordedSeconds >= this.recordingLength) {
-                    this.stopRecording();
-                }
-            };
-
-            this.inputGain.connect(this.recorder);
-            this.recorder.connect(this.ctx.destination);
-        }
-
-        stopRecording() {
-            if (!this.isRecording) return;
-
-            this.isRecording = false;
-            document.getElementById('rec-indicator').style.display = 'none';
-
-            if (this.recorder) {
-                this.recorder.disconnect();
-                this.recorder = null;
+                this.setupAudioGraph();
+                this.setupMicrophone();
+                this.isInitialized = true;
             }
 
-            document.getElementById('record-btn').textContent = "RECORD: OFF";
-            document.getElementById('record-btn').classList.remove('active');
-
-            this.processRecording();
-        }
-
-        processRecording() {
-            if (this.audioChunks.length === 0) return;
-
-            let totalLength = 0;
-            for (const chunk of this.audioChunks) totalLength += chunk.length;
-
-            const buffer = this.ctx.createBuffer(1, totalLength, this.ctx.sampleRate);
-            const channelData = buffer.getChannelData(0);
-
-            let offset = 0;
-            for (const chunk of this.audioChunks) {
-                channelData.set(chunk, offset);
-                offset += chunk.length;
-            }
-
-            this.recordedBuffers.push(buffer);
-            this.createLoop(buffer);
-            this.loopCount = this.recordedBuffers.length;
-
-            // FIX: rebalance all loop gains whenever a new loop is added
-            this._rebalanceLoopGains();
-        }
-
-        // FIX: scale each loop's gain so total output stays consistent
-        // regardless of how many loops are playing
-        _rebalanceLoopGains() {
-            const active = this.loopGains.filter(g => g !== null);
-            const count = Math.max(1, active.length);
-            const perLoopGain = Math.min(1.0, 1.0 / Math.sqrt(count));
-            active.forEach(g => {
-                if (g) g.gain.setTargetAtTime(perLoopGain, this.ctx.currentTime, 0.1);
-            });
-        }
-
-        createLoop(buffer) {
-            const loopIndex = this.recordedBuffers.length - 1;
-
-            const source = this.ctx.createBufferSource();
-            source.buffer = buffer;
-            source.loop = true;
-
-            const playbackRate = 0.9 + (Math.random() * 0.2);
-            source.playbackRate.value = playbackRate;
-
-            // FIX: start gain at 1/sqrt(loopCount) so stacking loops don't blow up
-            const count = Math.max(1, this.loopGains.filter(g => g !== null).length + 1);
-            const initialGain = Math.min(1.0, 1.0 / Math.sqrt(count));
-
-            const gainNode = this.ctx.createGain();
-            gainNode.gain.value = initialGain;
-
-            const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = this.currentFilterCutoff;
-
-            const panner = this.ctx.createStereoPanner();
-            const panPosition = (Math.random() * 2) - 1;
-            panner.pan.value = panPosition;
-
-            const shaper = this.ctx.createWaveShaper();
-            shaper.curve = this.distortionCurve;
-            shaper.oversample = '2x';
-
-            source.connect(filter);
-            filter.connect(panner);
-            panner.connect(shaper);
-            shaper.connect(gainNode);
-            gainNode.connect(this.masterGain);
-
-            this.loopSources.push(source);
-            this.loopGains.push(gainNode);
-            this.loopFilters.push(filter);
-            this.loopPanners.push(panner);
-            this.loopShapers.push(shaper);
-
-            // FIX: granular processor output gain also scaled by loop count
-            const granularProcessor = {
-                node: this.ctx.createGain(),
-                startTime: this.ctx.currentTime,
-                age: 0,
-                pan: panPosition,
-                buffer: buffer,
-                activeGrains: [],
-                grainTimer: null,
-                filter: filter,
-                gain: gainNode
-            };
-            // FIX: granular node gain capped — was 1.0 regardless of loop count
-            granularProcessor.node.gain.value = initialGain * 0.5;
-            granularProcessor.node.connect(this.masterGain);
-            this.loopGrains.push(granularProcessor);
-
-            source.start();
-            this.startLoopDecay(loopIndex);
-        }
-
-        startLoopDecay(loopIndex) {
-            const startTime = this.ctx.currentTime;
-            const gainNode = this.loopGains[loopIndex];
-            const filter = this.loopFilters[loopIndex];
-            const decayTime = 45;
-
-            // Decay envelope — ramps down to 0 but starts from current rebalanced value
-            gainNode.gain.linearRampToValueAtTime(gainNode.gain.value, startTime);
-            gainNode.gain.linearRampToValueAtTime(0.0, startTime + decayTime);
-
-            filter.frequency.linearRampToValueAtTime(8000, startTime);
-            filter.frequency.linearRampToValueAtTime(1000, startTime + decayTime);
-
-            setTimeout(() => {
-                this.startGranularDisintegration(loopIndex);
-            }, 8000);
-
-            setTimeout(() => {
-                if (this.loopSources[loopIndex]) {
-                    try { this.loopSources[loopIndex].stop(); } catch(e) {}
-                    try { this.loopSources[loopIndex].disconnect(); } catch(e) {}
-                }
-                try { if (this.loopFilters[loopIndex]) this.loopFilters[loopIndex].disconnect(); } catch(e) {}
-                try { if (this.loopPanners[loopIndex]) this.loopPanners[loopIndex].disconnect(); } catch(e) {}
-                try { if (this.loopShapers[loopIndex]) this.loopShapers[loopIndex].disconnect(); } catch(e) {}
-                try { if (this.loopGains[loopIndex]) this.loopGains[loopIndex].disconnect(); } catch(e) {}
-
-                this.loopSources[loopIndex] = null;
-                this.loopGains[loopIndex] = null;
-                this.loopFilters[loopIndex] = null;
-                this.loopPanners[loopIndex] = null;
-                this.loopShapers[loopIndex] = null;
-
-                if (this.loopGrains[loopIndex]) {
-                    if (this.loopGrains[loopIndex].grainTimer) {
-                        clearTimeout(this.loopGrains[loopIndex].grainTimer);
+            _unlockHandler(e) {
+                if (this.unlocked || !this.ctx) return;
+                this.ctx.resume().then(() => {
+                    if (this.ctx.state === 'running') {
+                        this.unlocked = true;
+                        this._removeUnlockListeners();
                     }
-                    // Kill any remaining active grains
-                    this.loopGrains[loopIndex].activeGrains.forEach(g => {
-                        try { g.source.stop(); } catch(e) {}
-                        try { g.source.disconnect(); } catch(e) {}
-                        try { g.gain.disconnect(); } catch(e) {}
-                        try { g.filter.disconnect(); } catch(e) {}
+                }).catch(e => console.warn);
+                // tiny silent buffer to force audio context activation
+                const buffer = this.ctx.createBuffer(1, 1, 22050);
+                const source = this.ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.ctx.destination);
+                source.start(0);
+            }
+
+            _removeUnlockListeners() {
+                ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(evt => {
+                    document.body.removeEventListener(evt, this._unlockHandler, { capture: true });
+                });
+            }
+
+            setupAudioGraph() {
+                // Brickwall limiter (safe ceiling)
+                this.limiter = this.ctx.createDynamicsCompressor();
+                this.limiter.threshold.value = -2;
+                this.limiter.knee.value = 0;
+                this.limiter.ratio.value = 20;
+                this.limiter.attack.value = 0.001;
+                this.limiter.release.value = 0.05;
+                this.limiter.connect(this.ctx.destination);
+
+                // Main compressor
+                this.compressor = this.ctx.createDynamicsCompressor();
+                this.compressor.threshold.value = -24;
+                this.compressor.knee.value = 6;
+                this.compressor.ratio.value = 16;
+                this.compressor.attack.value = 0.001;
+                this.compressor.release.value = 0.1;
+                this.compressor.connect(this.limiter);
+
+                // Touch-controlled lowpass (Y axis)
+                this.touchFilter = this.ctx.createBiquadFilter();
+                this.touchFilter.type = 'lowpass';
+                this.touchFilter.frequency.value = 18000;
+                this.touchFilter.Q.value = 0.5;
+                this.touchFilter.connect(this.compressor);
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0.18;
+                this.masterGain.connect(this.touchFilter);
+
+                this.analyser = this.ctx.createAnalyser();
+                this.analyser.fftSize = 2048;
+                this.masterGain.connect(this.analyser);
+            }
+
+            async setupMicrophone() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
                     });
-                    try { this.loopGrains[loopIndex].node.disconnect(); } catch(e) {}
-                    this.loopGrains[loopIndex] = null;
+                    this.microphoneSource = this.ctx.createMediaStreamSource(stream);
+                    this.inputGain = this.ctx.createGain();
+                    this.inputGain.gain.value = 1.0;
+                    this.microphoneSource.connect(this.inputGain);
+
+                    this.recordingGain = this.ctx.createGain();
+                    this.recordingGain.gain.value = 0;
+                    this.inputGain.connect(this.recordingGain);
+                    console.log("🎤 Microphone ready");
+                } catch (err) {
+                    console.warn("Microphone error:", err);
                 }
+            }
 
-                this.loopCount--;
+            startRecording() {
+                if (!this.ctx || this.isRecording) return;
+                this.isRecording = true;
+                this.audioChunks = [];
+                const recIndicator = document.getElementById('rec-indicator');
+                if (recIndicator) recIndicator.style.display = 'block';
 
-                // FIX: prune fully-null entries so arrays don't grow forever
-                const pruneArrays = () => {
-                    this.loopSources = this.loopSources.filter((_, i) => this.loopSources[i] !== null || this.loopGrains[i] !== null || this.loopGains[i] !== null);
-                    // Simpler: just compact all arrays together
+                const bufferSize = 4096;
+                this.recorder = this.ctx.createScriptProcessor(bufferSize, 1, 1);
+                this.recorder.onaudioprocess = (event) => {
+                    if (!this.isRecording) return;
+                    const inputData = event.inputBuffer.getChannelData(0);
+                    const copy = new Float32Array(inputData.length);
+                    copy.set(inputData);
+                    this.audioChunks.push(copy);
+                    const recordedSeconds = (this.audioChunks.length * bufferSize) / this.ctx.sampleRate;
+                    if (recordedSeconds >= this.recordingLength) {
+                        this.stopRecording();
+                    }
                 };
-                // Compact all parallel arrays by removing indices where everything is null
-                const keep = this.loopSources.map((_, i) =>
-                    this.loopSources[i] !== null ||
-                    this.loopGains[i] !== null ||
-                    this.loopGrains[i] !== null
-                );
-                this.loopSources  = this.loopSources.filter((_, i) => keep[i]);
-                this.loopGains    = this.loopGains.filter((_, i) => keep[i]);
-                this.loopFilters  = this.loopFilters.filter((_, i) => keep[i]);
-                this.loopPanners  = this.loopPanners.filter((_, i) => keep[i]);
-                this.loopShapers  = this.loopShapers.filter((_, i) => keep[i]);
-                this.loopGrains   = this.loopGrains.filter((_, i) => keep[i]);
+                if (this.inputGain) this.inputGain.connect(this.recorder);
+                this.recorder.connect(this.ctx.destination);
+            }
 
-                // Also cap recordedBuffers so memory doesn't grow unboundedly
-                if (this.recordedBuffers.length > 8) {
-                    this.recordedBuffers = this.recordedBuffers.slice(-8);
+            stopRecording() {
+                if (!this.isRecording) return;
+                this.isRecording = false;
+                const recIndicator = document.getElementById('rec-indicator');
+                if (recIndicator) recIndicator.style.display = 'none';
+                if (this.recorder) {
+                    this.recorder.disconnect();
+                    this.recorder = null;
                 }
+                const recBtn = document.getElementById('record-btn');
+                if (recBtn) {
+                    recBtn.textContent = "RECORD: OFF";
+                    recBtn.classList.remove('active');
+                }
+                this.processRecording();
+            }
 
+            processRecording() {
+                if (this.audioChunks.length === 0) return;
+                let totalLength = 0;
+                for (const chunk of this.audioChunks) totalLength += chunk.length;
+                const buffer = this.ctx.createBuffer(1, totalLength, this.ctx.sampleRate);
+                const channelData = buffer.getChannelData(0);
+                let offset = 0;
+                for (const chunk of this.audioChunks) {
+                    channelData.set(chunk, offset);
+                    offset += chunk.length;
+                }
+                this.recordedBuffers.push(buffer);
+                this.createLoop(buffer);
+                this.loopCount = this.recordedBuffers.length;
                 this._rebalanceLoopGains();
-            }, decayTime * 1000);
-        }
-
-        startGranularDisintegration(loopIndex) {
-            const granularProcessor = this.loopGrains[loopIndex];
-            if (!granularProcessor) return;
-            this.scheduleGranularGrains(loopIndex);
-        }
-
-        scheduleGranularGrains(loopIndex) {
-            const granularProcessor = this.loopGrains[loopIndex];
-            if (!granularProcessor) return;
-
-            // Prune stale grains first
-            const now = this.ctx.currentTime;
-            granularProcessor.activeGrains = granularProcessor.activeGrains.filter(g => g.endTime > now);
-
-            // FIX: hard cap — if too many grains are already alive, skip this burst entirely
-            const totalActiveGrains = this.loopGrains
-                .filter(g => g !== null)
-                .reduce((sum, g) => sum + g.activeGrains.length, 0);
-            if (totalActiveGrains > 24) {
-                // Back off and try again later instead of spawning more
-                granularProcessor.grainTimer = setTimeout(() => {
-                    this.scheduleGranularGrains(loopIndex);
-                }, 500);
-                return;
             }
 
-            const grainCount = 1 + Math.floor(this.currentGrainDensity * 3);
-
-            for (let i = 0; i < grainCount; i++) {
-                this.playGranularGrain(loopIndex, now + i * 0.02);
+            _rebalanceLoopGains() {
+                const active = this.loopGains.filter(g => g !== null);
+                const count = Math.max(1, active.length);
+                const perLoopGain = Math.min(0.9, 1.0 / Math.sqrt(count));
+                active.forEach(g => {
+                    if (g) g.gain.setTargetAtTime(perLoopGain, this.ctx.currentTime, 0.08);
+                });
+                // also rebalance granular processor nodes if needed
+                for (let i = 0; i < this.loopGrains.length; i++) {
+                    if (this.loopGrains[i] && this.loopGrains[i].node) {
+                        this.loopGrains[i].node.gain.setTargetAtTime(perLoopGain * 0.45, this.ctx.currentTime, 0.08);
+                    }
+                }
             }
 
-            const nextGrainTime = 0.3 - (this.currentGrainDensity * 0.1);
-            granularProcessor.grainTimer = setTimeout(() => {
-                this.scheduleGranularGrains(loopIndex);
-            }, nextGrainTime * 1000);
-        }
+            createLoop(buffer) {
+                const loopIndex = this.recordedBuffers.length - 1;
+                const source = this.ctx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+                const randomRate = 0.92 + (Math.random() * 0.16);
+                source.playbackRate.value = randomRate;
 
-        playGranularGrain(loopIndex, startTime) {
-            const granularProcessor = this.loopGrains[loopIndex];
-            if (!granularProcessor) return;
+                const activeCount = this.loopGains.filter(g => g !== null).length + 1;
+                const initialGain = Math.min(0.85, 1.0 / Math.sqrt(activeCount));
 
-            if (Math.random() < this.degradeAmount * 0.5) return;
+                const gainNode = this.ctx.createGain();
+                gainNode.gain.value = initialGain;
 
-            const buffer = granularProcessor.buffer;
-            const ctx = this.ctx;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = this.currentFilterCutoff || 8000;
 
-            const grainSource = ctx.createBufferSource();
-            grainSource.buffer = buffer;
+                const panner = this.ctx.createStereoPanner();
+                const panPosition = (Math.random() * 2) - 1;
+                panner.pan.value = panPosition;
 
-            let grainSize = 0.05 + (Math.random() * 0.15 * (1 - this.degradeAmount * 0.5));
-            grainSize = Math.max(0.03, grainSize);
-
-            const maxStart = Math.max(0, buffer.duration - grainSize);
-            const startPos = Math.random() * maxStart;
-
-            const wobble = (Math.random() - 0.5) * 1200 * this.degradeAmount;
-            grainSource.detune.value = wobble;
-
-            const randomRate = 0.7 + (Math.random() * 0.6);
-            grainSource.playbackRate.value = randomRate * this.currentPlaybackRate;
-
-            const grainGain = ctx.createGain();
-
-            const attackTime = 0.005;
-            const releaseTime = 0.01;
-
-            // FIX: grain peak gain reduced from 0.5 to 0.25, and scaled by active loop count
-            const activeCount = Math.max(1, this.loopGrains.filter(g => g !== null).length);
-            const grainPeak = 0.25 / Math.sqrt(activeCount);
-
-            grainGain.gain.setValueAtTime(0, startTime);
-            grainGain.gain.linearRampToValueAtTime(grainPeak, startTime + attackTime);
-            grainGain.gain.setValueAtTime(grainPeak, startTime + grainSize - releaseTime);
-            grainGain.gain.linearRampToValueAtTime(0, startTime + grainSize);
-
-            const grainFilter = ctx.createBiquadFilter();
-            grainFilter.type = 'lowpass';
-            const degradedCutoff = this.currentFilterCutoff * (1 - this.degradeAmount * 0.6);
-            grainFilter.frequency.value = Math.max(100, degradedCutoff);
-
-            let outputNode = grainFilter;
-            let shaper = null;
-
-            if (this.degradeAmount > 0.4) {
-                shaper = ctx.createWaveShaper();
+                const shaper = this.ctx.createWaveShaper();
                 shaper.curve = this.distortionCurve;
                 shaper.oversample = '2x';
 
-                const distGain = ctx.createGain();
-                distGain.gain.value = 0.5; // FIX: reduced from 0.7
+                source.connect(filter);
+                filter.connect(panner);
+                panner.connect(shaper);
+                shaper.connect(gainNode);
+                gainNode.connect(this.masterGain);
 
-                grainFilter.connect(shaper);
-                shaper.connect(distGain);
-                outputNode = distGain;
-            }
+                this.loopSources.push(source);
+                this.loopGains.push(gainNode);
+                this.loopFilters.push(filter);
+                this.loopPanners.push(panner);
+                this.loopShapers.push(shaper);
 
-            grainSource.connect(grainFilter);
-            outputNode.connect(grainGain);
-            grainGain.connect(granularProcessor.node);
+                // Granular processor for this loop
+                const granularNode = this.ctx.createGain();
+                granularNode.gain.value = initialGain * 0.45;
+                granularNode.connect(this.masterGain);
 
-            const grainEntry = { source: grainSource, gain: grainGain, filter: grainFilter, endTime: startTime + grainSize };
-            granularProcessor.activeGrains.push(grainEntry);
-
-            grainSource.onended = () => {
-                try { grainSource.disconnect(); } catch(e) {}
-                try { grainGain.disconnect(); } catch(e) {}
-                try { grainFilter.disconnect(); } catch(e) {}
-                if (shaper) { try { shaper.disconnect(); } catch(e) {} }
-                const idx = granularProcessor.activeGrains.indexOf(grainEntry);
-                if (idx !== -1) granularProcessor.activeGrains.splice(idx, 1);
-            };
-
-            grainSource.start(startTime, startPos, grainSize);
-            grainSource.stop(startTime + grainSize);
-
-        clearLoops() {
-            for (let i = 0; i < this.loopSources.length; i++) {
-                if (this.loopSources[i]) {
-                    try { this.loopSources[i].stop(); } catch(e) {}
-                    try { this.loopSources[i].disconnect(); } catch(e) {}
-                }
-                try { if (this.loopFilters[i]) this.loopFilters[i].disconnect(); } catch(e) {}
-                try { if (this.loopPanners[i]) this.loopPanners[i].disconnect(); } catch(e) {}
-                try { if (this.loopShapers[i]) this.loopShapers[i].disconnect(); } catch(e) {}
-                try { if (this.loopGains[i]) this.loopGains[i].disconnect(); } catch(e) {}
-                if (this.loopGrains[i]) {
-                    if (this.loopGrains[i].grainTimer) clearTimeout(this.loopGrains[i].grainTimer);
-                    this.loopGrains[i].activeGrains.forEach(g => {
-                        try { g.source.stop(); } catch(e) {}
-                        try { g.source.disconnect(); } catch(e) {}
-                        try { g.gain.disconnect(); } catch(e) {}
-                        try { g.filter.disconnect(); } catch(e) {}
-                    });
-                    try { this.loopGrains[i].node.disconnect(); } catch(e) {}
-                }
-            }
-
-            this.recordedBuffers = [];
-            this.loopSources = [];
-            this.loopGains = [];
-            this.loopFilters = [];
-            this.loopGrains = [];
-            this.loopPanners = [];
-            this.loopShapers = [];
-            this.loopCount = 0;
-        }
-
-        updateParams(x, y) {
-            this.degradeAmount = x;
-
-            // Cap y at 65% of its range, then rescale to 0–1 so UI reads 0–100%
-            const yScaled = Math.min(y, 0.65) / 0.65;
-            this.gritAmount = yScaled;
-
-            const playbackRate = 0.7 + x * 1.1;
-            this.currentPlaybackRate = playbackRate;
-
-            this.currentFilterCutoff = 10000 - x * 9850;
-            if (this.currentFilterCutoff < 150) this.currentFilterCutoff = 150;
-
-            // FIX: only rebuild distortion curve when value changes meaningfully
-            const distAmt = Math.round(x * 25) / 25;
-            if (Math.abs(distAmt - this.lastDistortionAmount) > 0.01) {
-                this.distortionCurve = makeDistortionCurve(x * 150);
-                this.lastDistortionAmount = distAmt;
-                for (let i = 0; i < this.loopShapers.length; i++) {
-                    if (this.loopShapers[i]) this.loopShapers[i].curve = this.distortionCurve;
-                }
-            }
-
-            this.currentGrainDensity = 0.5 + yScaled * 3.5;
-
-            // Touch lowpass: top of screen = open (18000Hz), bottom = closed (300Hz)
-            if (this.touchFilter) {
-                const touchFilterFreq = 18000 * Math.pow(300 / 18000, yScaled);
-                this.touchFilter.frequency.setTargetAtTime(touchFilterFreq, this.ctx.currentTime, 0.05);
-            }
-
-            for (let i = 0; i < this.loopFilters.length; i++) {
-                if (this.loopFilters[i]) {
-                    this.loopFilters[i].frequency.setTargetAtTime(this.currentFilterCutoff, this.ctx.currentTime, 0.1);
-                }
-            }
-
-            document.getElementById('val-loops').textContent = this.loopCount;
-            document.getElementById('val-degrade').textContent = Math.floor(this.degradeAmount * 100) + '%';
-            document.getElementById('val-grit').textContent = Math.floor(yScaled * 100) + '%';
-            let panText = "CENTER";
-            if (x < 0.3) panText = "LEFT";
-            else if (x > 0.7) panText = "RIGHT";
-            document.getElementById('val-pan').textContent = panText;
-        }
-    }
-
-    const app = {
-        audio: new TapeLoopEngine(),
-        canvas: document.getElementById('canvas'),
-        ctx: document.getElementById('canvas').getContext('2d'),
-        touchIndicator: document.getElementById('touch-indicator'),
-
-        width: 0,
-        height: 0,
-
-        touchX: 0.5,
-        touchY: 0.5,
-        isTouching: false,
-
-        grid: [],
-        rows: 0,
-        cols: 0,
-
-        init() {
-            this.resize();
-            window.addEventListener('resize', () => this.resize());
-            this.initGrid();
-
-            const startOverlay = document.getElementById('start-overlay');
-
-            document.body.addEventListener('touchstart', () => {
-                if (this.audio.ctx && this.audio.ctx.state === 'suspended') {
-                    this.audio.ctx.resume();
-                }
-            }, { passive: true });
-
-            const startHandler = (e) => {
-                if (e) { e.preventDefault(); e.stopPropagation(); }
-                this.audio.init();
-                startOverlay.style.opacity = 0;
-                setTimeout(() => startOverlay.remove(), 500);
-                this.loop();
-            };
-            startOverlay.addEventListener('click', startHandler);
-            startOverlay.addEventListener('touchstart', startHandler, { passive: false });
-
-            const recordBtn = document.getElementById('record-btn');
-            recordBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (this.audio.isRecording) {
-                    this.audio.stopRecording();
-                } else {
-                    this.audio.startRecording();
-                    e.target.textContent = "RECORD: ON";
-                    e.target.classList.add('active');
-                }
-            });
-
-            const clearBtn = document.getElementById('clear-btn');
-            clearBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.audio.clearLoops();
-            });
-
-            this.setupInteractions();
-        },
-
-        resize() {
-            this.width = window.innerWidth;
-            this.height = window.innerHeight;
-            this.canvas.width = this.width;
-            this.canvas.height = this.height;
-
-            const isMobile = this.width < this.height;
-            this.rows = isMobile ? 25 : 30;
-            this.cols = isMobile ? 15 : 30;
-
-            this.initGrid();
-        },
-
-        initGrid() {
-            this.grid = [];
-            for (let r = 0; r <= this.rows; r++) {
-                for (let c = 0; c <= this.cols; c++) {
-                    this.grid.push({
-                        baseX: c / this.cols,
-                        baseY: r / this.rows,
-                        x: c / this.cols,
-                        y: r / this.rows,
-                        z: 0
-                    });
-                }
-            }
-        },
-
-        setupInteractions() {
-            const getNormalizedCoords = (clientX, clientY) => {
-                const rect = this.canvas.getBoundingClientRect();
-                const x = (clientX - rect.left) / rect.width;
-                const y = (clientY - rect.top) / rect.height;
-                return {
-                    x: Math.max(0, Math.min(1, x)),
-                    y: Math.max(0, Math.min(1, y))
+                const granularProcessor = {
+                    node: granularNode,
+                    startTime: this.ctx.currentTime,
+                    age: 0,
+                    pan: panPosition,
+                    buffer: buffer,
+                    activeGrains: [],
+                    grainTimer: null,
+                    filter: filter,
+                    gain: gainNode
                 };
-            };
+                this.loopGrains.push(granularProcessor);
 
-            const updateParams = (clientX, clientY) => {
-                const { x, y } = getNormalizedCoords(clientX, clientY);
-                this.touchX = x;
-                this.touchY = y;
-                this.isTouching = true;
-                this.touchIndicator.style.display = 'block';
-                this.touchIndicator.style.left = (clientX - 20) + 'px';
-                this.touchIndicator.style.top = (clientY - 20) + 'px';
-                this.audio.updateParams(x, y);
-            };
-
-            const startTouch = (e) => {
-                const isTouchEvent = !!e.touches;
-                let clientX, clientY;
-                if (isTouchEvent) {
-                    if (!e.touches || e.touches.length === 0) return;
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                } else {
-                    clientX = e.clientX;
-                    clientY = e.clientY;
-                }
-                const rect = this.canvas.getBoundingClientRect();
-                if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return;
-                e.preventDefault();
-                e.stopPropagation();
-                updateParams(clientX, clientY);
-            };
-
-            const moveTouch = (e) => {
-                if (!this.isTouching) return;
-                e.preventDefault();
-                const t = e.touches ? e.touches[0] : e;
-                updateParams(t.clientX, t.clientY);
-            };
-
-            const endTouch = () => {
-                this.isTouching = false;
-                this.touchIndicator.style.display = 'none';
-                if (this.audio.touchFilter) {
-                    this.audio.touchFilter.frequency.setTargetAtTime(18000, this.audio.ctx.currentTime, 0.3);
-                }
-            };
-
-            this.canvas.addEventListener('mousedown', startTouch);
-            this.canvas.addEventListener('touchstart', startTouch, { passive: false });
-            window.addEventListener('mousemove', moveTouch);
-            window.addEventListener('mouseup', endTouch);
-            window.addEventListener('touchmove', moveTouch, { passive: false });
-            window.addEventListener('touchend', endTouch);
-        },
-
-        loop() {
-            requestAnimationFrame(() => this.loop());
-            this.draw();
-        },
-
-        draw() {
-            const ctx = this.ctx;
-            const w = this.width;
-            const h = this.height;
-
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, w, h);
-
-            let timeData = new Uint8Array(2048);
-            if (this.audio.analyser) {
-                this.audio.analyser.getByteTimeDomainData(timeData);
+                source.start();
+                this.startLoopDecay(loopIndex);
             }
 
-            const grit = this.audio.gritAmount;
-            const loopCount = this.audio.loopCount;
-            const filterCutoff = this.audio.currentFilterCutoff;
-            const grainDensity = this.audio.currentGrainDensity;
+            startLoopDecay(loopIndex) {
+                const startTime = this.ctx.currentTime;
+                const gainNode = this.loopGains[loopIndex];
+                const filter = this.loopFilters[loopIndex];
+                const decayTime = 46; // seconds
 
-            const lineWidth = 1 + grit * 5;
-            const brightness = 0.5 + (grit * 0.5);
-            const gridDensity = 0.5 + (grainDensity * 0.5);
+                if (gainNode) {
+                    gainNode.gain.linearRampToValueAtTime(gainNode.gain.value, startTime);
+                    gainNode.gain.linearRampToValueAtTime(0.0, startTime + decayTime);
+                }
+                if (filter) {
+                    filter.frequency.linearRampToValueAtTime(8000, startTime);
+                    filter.frequency.linearRampToValueAtTime(900, startTime + decayTime);
+                }
 
-            ctx.lineWidth = lineWidth;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${brightness})`;
+                // schedule granular disintegration after 8 seconds
+                setTimeout(() => {
+                    if (this.loopGrains[loopIndex]) this.startGranularDisintegration(loopIndex);
+                }, 8000);
 
-            const project = (x, y, z) => {
-                const fov = 300;
-                const scale = fov / (fov + z);
-                const x2d = (x - 0.5) * w * scale + w / 2;
-                const y2d = (y - 0.5) * h * scale + h / 2;
-                return [x2d, y2d];
-            };
-
-            const t = Date.now() * 0.001;
-
-            for (let layer = 0; layer < Math.max(1, loopCount * gridDensity); layer++) {
-                ctx.beginPath();
-
-                const layerPan = (layer % 3) - 1;
-                const xOffset = layerPan * 0.1 * this.touchX;
-                const yOffset = layer * 0.02;
-
-                for (let r = 0; r <= this.rows; r++) {
-                    for (let c = 0; c <= this.cols; c++) {
-                        const idx = r * (this.cols + 1) + c;
-                        const p = this.grid[idx];
-
-                        const audioIdx = Math.floor(p.baseX * 2047);
-                        let audioVal = (timeData[audioIdx] / 128.0) - 1.0;
-                        if (!isFinite(audioVal)) audioVal = 0;
-
-                        let displace = audioVal * 0.1 * (1 + loopCount * 0.2);
-
-                        const filterFactor = 1 - (filterCutoff / 8000);
-                        if (grit > 0.1) {
-                            displace += (Math.random() - 0.5) * 0.2 * grit * filterFactor;
-                        }
-
-                        if (this.isTouching) {
-                            const touchDistortion = Math.sin(r * 0.5 + t + layer) * 0.1 * grit;
-                            displace += touchDistortion;
-                        }
-
-                        const z = 100 + Math.sin(r * 0.3 + t + layer) * 30 * (1 + grit);
-                        const finalX = p.baseX + xOffset;
-                        const finalY = p.baseY + displace + yOffset;
-                        const [px, py] = project(finalX, finalY, z);
-
-                        if (c === 0) ctx.moveTo(px, py);
-                        else ctx.lineTo(px, py);
+                // complete removal after decayTime
+                setTimeout(() => {
+                    if (this.loopSources[loopIndex]) {
+                        try { this.loopSources[loopIndex].stop(); } catch(e) {}
+                        try { this.loopSources[loopIndex].disconnect(); } catch(e) {}
                     }
-                }
+                    [this.loopFilters, this.loopPanners, this.loopShapers, this.loopGains].forEach(arr => {
+                        if (arr[loopIndex]) {
+                            try { arr[loopIndex].disconnect(); } catch(e) {}
+                            arr[loopIndex] = null;
+                        }
+                    });
+                    if (this.loopGrains[loopIndex]) {
+                        if (this.loopGrains[loopIndex].grainTimer) clearTimeout(this.loopGrains[loopIndex].grainTimer);
+                        this.loopGrains[loopIndex].activeGrains.forEach(g => {
+                            try { g.source.stop(); } catch(e) {}
+                            try { g.source.disconnect(); } catch(e) {}
+                            try { g.gain.disconnect(); } catch(e) {}
+                            try { g.filter.disconnect(); } catch(e) {}
+                        });
+                        if (this.loopGrains[loopIndex].node) this.loopGrains[loopIndex].node.disconnect();
+                        this.loopGrains[loopIndex] = null;
+                    }
+                    this.loopSources[loopIndex] = null;
 
-                ctx.globalAlpha = (0.7 / (layer + 1)) * (1 - grit * 0.3);
-                ctx.stroke();
+                    // compact arrays
+                    const keepMask = this.loopSources.map((_, idx) => this.loopSources[idx] !== null || this.loopGrains[idx] !== null);
+                    this.loopSources = this.loopSources.filter((_, idx) => keepMask[idx]);
+                    this.loopGains = this.loopGains.filter((_, idx) => keepMask[idx]);
+                    this.loopFilters = this.loopFilters.filter((_, idx) => keepMask[idx]);
+                    this.loopPanners = this.loopPanners.filter((_, idx) => keepMask[idx]);
+                    this.loopShapers = this.loopShapers.filter((_, idx) => keepMask[idx]);
+                    this.loopGrains = this.loopGrains.filter((_, idx) => keepMask[idx]);
+
+                    this.loopCount = this.loopSources.filter(s => s !== null).length;
+                    this._rebalanceLoopGains();
+                    if (this.recordedBuffers.length > 12) this.recordedBuffers = this.recordedBuffers.slice(-10);
+                }, decayTime * 1000);
             }
 
-            ctx.globalAlpha = 1.0;
-
-            if (this.isTouching) {
-                const centerX = this.touchX * w;
-                const centerY = this.touchY * h;
-                const rippleSize = 50 + (grit * 150);
-
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, rippleSize, 0, Math.PI * 2);
-                ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + grit * 0.3})`;
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-        }
-    };
-
-    window.onload = () => app.init();
-</script>
-
-<div id="persistent-nav">
-    <button class="nav-btn" onclick="goToMenu()">M</button>
-    <button class="nav-btn" onclick="goToRandom()">R</button>
-</div>
-
-<!-- MIDI Integration -->
-<script src="../midi-handler.js"></script>
-<script>
-    (function () {
-        window.addEventListener('load', () => {
-            if (!window.MIDIHandler) {
-                console.error("MIDIHandler not found. Check if ../midi-handler.js is accessible.");
-                return;
+            startGranularDisintegration(loopIndex) {
+                if (!this.loopGrains[loopIndex]) return;
+                this.scheduleGranularGrains(loopIndex);
             }
 
-            window.MIDIHandler.on('noteon', (data) => {
-                if (!app || !app.audio || !app.audio.isInitialized) return;
+            scheduleGranularGrains(loopIndex) {
+                const processor = this.loopGrains[loopIndex];
+                if (!processor) return;
+                const now = this.ctx.currentTime;
+                processor.activeGrains = processor.activeGrains.filter(g => g.endTime > now);
 
-                if (data.note === 38) {
-                    document.getElementById('clear-btn').click();
+                // global grain cap to avoid CPU overload
+                let totalActiveGrains = 0;
+                for (let gproc of this.loopGrains) if (gproc) totalActiveGrains += gproc.activeGrains.length;
+                if (totalActiveGrains > 28) {
+                    processor.grainTimer = setTimeout(() => this.scheduleGranularGrains(loopIndex), 400);
                     return;
                 }
 
-                const x = data.note / 127;
-                const y = data.velocity / 127;
-
-                app.touchX = x;
-                app.touchY = y;
-                app.isTouching = true;
-                app.audio.updateParams(x, y);
-
-                const indicator = document.getElementById('touch-indicator');
-                if (indicator) {
-                    indicator.style.display = 'block';
-                    indicator.style.left = (x * window.innerWidth) + 'px';
-                    indicator.style.top = (y * window.innerHeight) + 'px';
+                const grainCount = 1 + Math.floor(this.currentGrainDensity * 3.2);
+                for (let i = 0; i < Math.min(grainCount, 4); i++) {
+                    this.playGranularGrain(loopIndex, now + i * 0.025);
                 }
-            });
 
-            window.MIDIHandler.on('noteoff', (data) => {
-                if (data.note < 48) return;
-                if (app) {
-                    app.isTouching = false;
-                    const indicator = document.getElementById('touch-indicator');
-                    if (indicator) indicator.style.display = 'none';
+                const nextDelay = Math.max(0.12, 0.28 - (this.currentGrainDensity * 0.08));
+                processor.grainTimer = setTimeout(() => this.scheduleGranularGrains(loopIndex), nextDelay * 1000);
+            }
+
+            playGranularGrain(loopIndex, startTime) {
+                const processor = this.loopGrains[loopIndex];
+                if (!processor || Math.random() < this.degradeAmount * 0.45) return;
+                const buffer = processor.buffer;
+                if (!buffer) return;
+                const ctx = this.ctx;
+                const grainSource = ctx.createBufferSource();
+                grainSource.buffer = buffer;
+
+                let grainSize = 0.045 + (Math.random() * 0.13 * (1 - this.degradeAmount * 0.4));
+                grainSize = Math.min(0.28, Math.max(0.025, grainSize));
+                const maxStart = Math.max(0, buffer.duration - grainSize);
+                const startPos = Math.random() * maxStart;
+                const wobble = (Math.random() - 0.5) * 1100 * this.degradeAmount;
+                grainSource.detune.value = wobble;
+                const randomRate = 0.68 + (Math.random() * 0.75);
+                grainSource.playbackRate.value = randomRate * this.currentPlaybackRate;
+
+                const grainGain = ctx.createGain();
+                const attackTime = 0.006;
+                const releaseTime = 0.012;
+                const activeLoopCount = Math.max(1, this.loopGrains.filter(g => g !== null).length);
+                const peakGain = 0.22 / Math.sqrt(activeLoopCount);
+
+                grainGain.gain.setValueAtTime(0, startTime);
+                grainGain.gain.linearRampToValueAtTime(peakGain, startTime + attackTime);
+                grainGain.gain.setValueAtTime(peakGain, startTime + grainSize - releaseTime);
+                grainGain.gain.linearRampToValueAtTime(0, startTime + grainSize);
+
+                const grainFilter = ctx.createBiquadFilter();
+                grainFilter.type = 'lowpass';
+                const degradedCutoff = this.currentFilterCutoff * (1 - this.degradeAmount * 0.55);
+                grainFilter.frequency.value = Math.max(180, Math.min(14000, degradedCutoff));
+
+                let outputNode = grainFilter;
+                if (this.degradeAmount > 0.35) {
+                    const shaper = ctx.createWaveShaper();
+                    shaper.curve = this.distortionCurve;
+                    shaper.oversample = '2x';
+                    const distGain = ctx.createGain();
+                    distGain.gain.value = 0.45;
+                    grainFilter.connect(shaper);
+                    shaper.connect(distGain);
+                    outputNode = distGain;
                 }
-            });
+                grainSource.connect(grainFilter);
+                outputNode.connect(grainGain);
+                grainGain.connect(processor.node);
 
-            window.MIDIHandler.on('cc', (data) => {
-                if (!app || !app.audio || !app.audio.isInitialized) return;
-                if (data.controller === 1) {
-                    if (app.audio.masterGain) {
-                        app.audio.masterGain.gain.setTargetAtTime(data.value / 127, app.audio.ctx.currentTime, 0.05);
+                const grainEntry = { source: grainSource, gain: grainGain, filter: grainFilter, endTime: startTime + grainSize };
+                processor.activeGrains.push(grainEntry);
+                grainSource.onended = () => {
+                    try { grainSource.disconnect(); } catch(e) {}
+                    try { grainGain.disconnect(); } catch(e) {}
+                    try { grainFilter.disconnect(); } catch(e) {}
+                    const idx = processor.activeGrains.indexOf(grainEntry);
+                    if (idx !== -1) processor.activeGrains.splice(idx, 1);
+                };
+                grainSource.start(startTime, startPos, grainSize);
+                grainSource.stop(startTime + grainSize);
+            }
+
+            clearLoops() {
+                for (let i = 0; i < this.loopSources.length; i++) {
+                    if (this.loopSources[i]) {
+                        try { this.loopSources[i].stop(); } catch(e) {}
+                        try { this.loopSources[i].disconnect(); } catch(e) {}
+                    }
+                    if (this.loopFilters[i]) this.loopFilters[i].disconnect();
+                    if (this.loopPanners[i]) this.loopPanners[i].disconnect();
+                    if (this.loopShapers[i]) this.loopShapers[i].disconnect();
+                    if (this.loopGains[i]) this.loopGains[i].disconnect();
+                    if (this.loopGrains[i]) {
+                        if (this.loopGrains[i].grainTimer) clearTimeout(this.loopGrains[i].grainTimer);
+                        this.loopGrains[i].activeGrains.forEach(g => {
+                            try { g.source.stop(); } catch(e) {}
+                            try { g.source.disconnect(); } catch(e) {}
+                            try { g.gain.disconnect(); } catch(e) {}
+                            try { g.filter.disconnect(); } catch(e) {}
+                        });
+                        if (this.loopGrains[i].node) this.loopGrains[i].node.disconnect();
                     }
                 }
-            });
-        });
-    })();
-</script>
-<!-- /MIDI Integration -->
-```
+                this.recordedBuffers = [];
+                this.loopSources = [];
+                this.loopGains = [];
+                this.loopFilters = [];
+                this.loopGrains = [];
+                this.loopPanners = [];
+                this.loopShapers = [];
+                this.loopCount = 0;
+                if (this.ctx && this.masterGain) this.masterGain.gain.setTargetAtTime(0.18, this.ctx.currentTime, 0.02);
+            }
 
+            updateParams(x, y) {
+                this.degradeAmount = Math.min(1.0, Math.max(0, x));
+                const yScaled = Math.min(1.0, Math.max(0, y / 0.85));
+                this.gritAmount = yScaled;
+                this.currentPlaybackRate = 0.7 + this.degradeAmount * 1.1;
+                this.currentFilterCutoff = 10500 - this.degradeAmount * 10350;
+                if (this.currentFilterCutoff < 160) this.currentFilterCutoff = 160;
+
+                const distValue = Math.round(this.degradeAmount * 30) / 30;
+                if (Math.abs(distValue - this.lastDistortionAmount) > 0.02) {
+                    this.distortionCurve = makeDistortionCurve(this.degradeAmount * 140);
+                    this.lastDistortionAmount = distValue;
+                    for (let i = 0; i < this.loopShapers.length; i++) {
+                        if (this.loopShapers[i]) this.loopShapers[i].curve = this.distortionCurve;
+                    }
+                }
+
+                this.currentGrainDensity = 0.45 + yScaled * 4.0;
+                if (this.touchFilter) {
+                    const touchFreq = 18000 * Math.pow(280 / 18000, yScaled);
+                    this.touchFilter.frequency.setTargetAtTime(touchFreq, this.ctx.currentTime, 0.04);
+                }
+                for (let i = 0; i < this.loopFilters.length; i++) {
+                    if (this.loopFilters[i]) this.loopFilters[i].frequency.setTargetAtTime(this.currentFilterCutoff, this.ctx.currentTime, 0.08);
+                }
+
+                const loopSpan = document.getElementById('val-loops');
+                if (loopSpan) loopSpan.textContent = this.loopCount;
+                const degradeSpan = document.getElementById('val-degrade');
+                if (degradeSpan) degradeSpan.textContent = Math.floor(this.degradeAmount * 100) + '%';
+                const gritSpan = document.getElementById('val-grit');
+                if (gritSpan) gritSpan.textContent = Math.floor(yScaled * 100) + '%';
+                let panText = "CENTER";
+                if (x < 0.3) panText = "LEFT";
+                else if (x > 0.7) panText = "RIGHT";
+                const panSpan = document.getElementById('val-pan');
+                if (panSpan) panSpan.textContent = panText;
+            }
+        }
+
+        // --------------------------------------------------------------
+        //  VISUAL APP (canvas, interactions)
+        // --------------------------------------------------------------
+        const app = {
+            audio: new TapeLoopEngine(),
+            canvas: document.getElementById('canvas'),
+            ctx: null,
+            touchIndicator: document.getElementById('touch-indicator'),
+            width: 0, height: 0,
+            touchX: 0.5, touchY: 0.5,
+            isTouching: false,
+            grid: [], rows: 0, cols: 0,
+
+            init() {
+                this.ctx = this.canvas.getContext('2d');
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.initGrid();
+
+                const startOverlay = document.getElementById('start-overlay');
+                const startHandler = (e) => {
+                    if (e) { e.preventDefault(); e.stopPropagation(); }
+                    this.audio.init();
+                    startOverlay.style.opacity = '0';
+                    setTimeout(() => startOverlay.remove(), 500);
+                    this.loop();
+                };
+                startOverlay.addEventListener('click', startHandler);
+                startOverlay.addEventListener('touchstart', startHandler, { passive: false });
+
+                const recordBtn = document.getElementById('record-btn');
+                recordBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (this.audio.isRecording) this.audio.stopRecording();
+                    else {
+                        this.audio.startRecording();
+                        recordBtn.textContent = "RECORD: ON";
+                        recordBtn.classList.add('active');
+                    }
+                });
+                const clearBtn = document.getElementById('clear-btn');
+                clearBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.audio.clearLoops();
+                });
+                this.setupInteractions();
+            },
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+                const isMobile = this.width < 700;
+                this.rows = isMobile ? 24 : 28;
+                this.cols = isMobile ? 14 : 26;
+                this.initGrid();
+            },
+
+            initGrid() {
+                this.grid = [];
+                for (let r = 0; r <= this.rows; r++) {
+                    for (let c = 0; c <= this.cols; c++) {
+                        this.grid.push({ baseX: c / this.cols, baseY: r / this.rows, x: c / this.cols, y: r / this.rows, z: 0 });
+                    }
+                }
+            },
+
+            setupInteractions() {
+                const getNorm = (clientX, clientY) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    return { x: Math.min(1, Math.max(0, (clientX - rect.left)/rect.width)), y: Math.min(1, Math.max(0, (clientY - rect.top)/rect.height)) };
+                };
+                const updateTouch = (clientX, clientY) => {
+                    const { x, y } = getNorm(clientX, clientY);
+                    this.touchX = x; this.touchY = y;
+                    this.isTouching = true;
+                    this.touchIndicator.style.display = 'block';
+                    this.touchIndicator.style.left = (clientX - 20) + 'px';
+                    this.touchIndicator.style.top = (clientY - 20) + 'px';
+                    this.audio.updateParams(x, y);
+                };
+                const onStart = (e) => {
+                    const ev = e.touches ? e.touches[0] : e;
+                    if (!ev) return;
+                    const rect = this.canvas.getBoundingClientRect();
+                    if (ev.clientX < rect.left || ev.clientX > rect.right || ev.clientY < rect.top || ev.clientY > rect.bottom) return;
+                    e.preventDefault();
+                    updateTouch(ev.clientX, ev.clientY);
+                };
+                const onMove = (e) => {
+                    if (!this.isTouching) return;
+                    e.preventDefault();
+                    const ev = e.touches ? e.touches[0] : e;
+                    if (ev) updateTouch(ev.clientX, ev.clientY);
+                };
+                const onEnd = () => {
+                    this.isTouching = false;
+                    this.touchIndicator.style.display = 'none';
+                    if (this.audio.touchFilter) this.audio.touchFilter.frequency.setTargetAtTime(18000, this.audio.ctx.currentTime, 0.3);
+                };
+                this.canvas.addEventListener('mousedown', onStart);
+                this.canvas.addEventListener('touchstart', onStart, { passive: false });
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onEnd);
+                window.addEventListener('touchmove', onMove, { passive: false });
+                window.addEventListener('touchend', onEnd);
+            },
+
+            loop() { requestAnimationFrame(() => this.loop()); this.draw(); },
+
+            draw() {
+                const ctx = this.ctx, w = this.width, h = this.height;
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, w, h);
+                let timeData = new Uint8Array(2048);
+                if (this.audio.analyser) this.audio.analyser.getByteTimeDomainData(timeData);
+                const grit = this.audio.gritAmount || 0;
+                const loopCount = this.audio.loopCount || 0;
+                const filterCutoff = this.audio.currentFilterCutoff || 5000;
+                const grainDen = this.audio.currentGrainDensity || 0.5;
+                ctx.lineWidth = 1 + grit * 4;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + grit*0.4})`;
+                const t = Date.now() * 0.001;
+                const layers = Math.max(1, Math.min(8, Math.floor(loopCount * 0.8 + grainDen * 1.2)));
+                for (let layer = 0; layer < layers; layer++) {
+                    ctx.beginPath();
+                    const layerOffsetX = (layer % 2 === 0 ? this.touchX * 0.08 : -this.touchX * 0.06);
+                    const layerOffsetY = layer * 0.012;
+                    for (let r = 0; r <= this.rows; r++) {
+                        for (let c = 0; c <= this.cols; c++) {
+                            const idx = r * (this.cols+1) + c;
+                            const p = this.grid[idx];
+                            const audioIdx = Math.floor(p.baseX * 2047);
+                            let audioVal = (timeData[audioIdx] / 128) - 1;
+                            if (!isFinite(audioVal)) audioVal = 0;
+                            let displace = audioVal * 0.08 * (1 + loopCount * 0.12);
+                            if (grit > 0.1) displace += (Math.random() - 0.5) * 0.15 * grit;
+                            const z = 80 + Math.sin(r * 0.5 + t + layer) * 35 * (1 + grit*0.5);
+                            const fx = p.baseX + layerOffsetX;
+                            const fy = p.baseY + displace + layerOffsetY;
+                            const fov = 320;
+                            const scale = fov / (fov + z);
+                            const px = (fx - 0.5) * w * scale + w/2;
+                            const py = (fy - 0.5) * h * scale + h/2;
+                            if (c === 0) ctx.moveTo(px, py);
+                            else ctx.lineTo(px, py);
+                        }
+                    }
+                    ctx.globalAlpha = 0.65 / (layer+0.8);
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                if (this.isTouching) {
+                    ctx.beginPath();
+                    ctx.arc(this.touchX * w, this.touchY * h, 42 + grit * 80, 0, Math.PI*2);
+                    ctx.strokeStyle = `rgba(255,200,200,0.5)`;
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                }
+            }
+        };
+
+        window.onload = () => app.init();
+
+        // simple dummy nav functions to avoid errors if nav.js missing
+        window.goToMenu = function() { console.log("menu placeholder"); };
+        window.goToRandom = function() { console.log("random placeholder"); };
+    </script>
 </body>
-
 </html>
