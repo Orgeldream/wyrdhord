@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../nav.css">
     <style>
         :root {
             --bg: #030303;
@@ -74,29 +75,6 @@
             z-index: 1000;
         }
 
-        .title-block {
-            pointer-events: auto;
-            text-align: left;
-            opacity: 0.8;
-            transition: opacity 0.3s ease;
-        }
-
-        .title-text {
-            font-weight: 600;
-            font-size: 14px;
-            letter-spacing: 4px;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-        }
-
-        .subtitle-text {
-            font-weight: 300;
-            font-size: 10px;
-            letter-spacing: 2px;
-            color: var(--accent);
-            text-transform: uppercase;
-        }
-
         .controls {
             position: fixed;
             bottom: 24px;
@@ -126,90 +104,64 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        #start-overlay {
+
+
+
+
+
+
+
+        #toggle-ui {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 1000;
+            opacity: 0;
+        }
+
+        #tap-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: var(--bg);
-            z-index: 100;
-            display: flex;
+            z-index: 9999;
+            pointer-events: auto;
+            display: none;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            cursor: pointer;
-            transition: opacity 1.5s ease;
-        }
-
-        .start-text {
-            font-size: 20px;
-            font-weight: 200;
-            letter-spacing: 8px;
-            text-transform: uppercase;
-            margin-bottom: 15px;
-        }
-
-        #nav-buttons {
-            display: flex;
-            gap: 12px;
-            pointer-events: auto;
-        }
-
-        .nav-btn {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-family: var(--font-main);
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
             justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(10px);
-            transition: all 0.2s;
+            opacity: 0;
+            transition: opacity 0.8s ease;
         }
 
-        .nav-btn:hover {
-            background: #fff;
-            color: #000;
-            border-color: #fff;
-        }
-
-        #persistent-nav {
-            position: fixed;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 12px;
-            z-index: 1000;
-            pointer-events: auto;
+        #tap-overlay.visible {
+            opacity: 1;
         }
     </style>
+    <script src="../nav.js"></script>
 </head>
 
 <body>
 
     <div id="start-overlay" onclick="start()">
-        <div class="start-text">Harmonic Maze</div>
-        <div style="font-size: 9px; letter-spacing: 3px; opacity: 0.4;">CLICK TO BEGIN</div>
+        <button class="start-btn">INITIALISE</button>
+        <div class="hint">HARMONIC MAZE SYNTHESISER</div>
+    </div>
+
+    <div id="tap-overlay">
+        <div class="hint">TAP TO BEGIN</div>
     </div>
 
     <div class="ui-layer" id="ui-layer">
     </div>
 
     <div id="persistent-nav">
-        <button class="nav-btn" onclick="window.location.href='../index.html'">M</button>
+        <button class="nav-btn" onclick="goToMenu()">M</button>
         <button class="nav-btn" onclick="goToRandom()">R</button>
     </div>
 
-    <button id="toggle-ui"
-        style="position: fixed; top: 24px; right: 24px; background:none; border:none; color:#fff; opacity:0; cursor:pointer; font-size:10px; letter-spacing:1px; text-transform:uppercase; pointer-events: auto; z-index: 1000; transition: opacity 0.3s;">Hide</button>
+    <button id="toggle-ui" class="right-btn">Hide</button>
 
     <div class="header" style="opacity: 0; transition: opacity 0.3s;">
         <div class="title-block">
@@ -425,14 +377,14 @@
             wanderer.y = height / 2;
             wanderer.targetX = width / 2;
             wanderer.targetY = height / 2;
-
+            
             setupInteraction();
             animate();
         }
 
         function setupInteraction() {
             const updateTarget = (e) => {
-                if (!isStarted) return;
+                if (!isStarted || !audioInitialized) return;
 
                 if (e.target.closest('.nav-btn')) return;
 
@@ -450,10 +402,35 @@
                 e.preventDefault();
                 updateTarget(e);
             }, { passive: false });
+        }
 
-            window.addEventListener('touchstart', (e) => {
+        function registerTapToBegin() {
+            const activateAudio = (e) => {
+                if (audioInitialized) return;
                 if (e.target.closest('.nav-btn')) return;
-            }, { passive: false });
+
+                audioInitialized = true;
+
+                const tapOverlay = document.getElementById('tap-overlay');
+                tapOverlay.classList.remove('visible');
+                setTimeout(() => { tapOverlay.style.display = 'none'; }, 800);
+
+                const x = e.touches ? e.touches[0].clientX : e.clientX;
+                const y = e.touches ? e.touches[0].clientY : e.clientY;
+                wanderer.targetX = x;
+                wanderer.targetY = y;
+
+                window.removeEventListener('click', activateAudio);
+                window.removeEventListener('touchstart', tapHandler);
+            };
+
+            const tapHandler = (e) => {
+                if (e.target.closest('.nav-btn')) return;
+                activateAudio(e);
+            };
+
+            window.addEventListener('click', activateAudio);
+            window.addEventListener('touchstart', tapHandler, { passive: false });
         }
 
         function resize() {
@@ -517,7 +494,6 @@
                     await audioCtx.resume();
                 }
 
-                audioInitialized = true;
                 isStarted = true;
                 window.isStarted = true;
 
@@ -525,7 +501,9 @@
                 document.getElementById('start-overlay').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('start-overlay').style.display = 'none';
-                }, 1500);
+       
+                    registerTapToBegin();
+                }, 15);
 
                 // Show UI elements after initialization
                 setTimeout(() => {
@@ -667,11 +645,6 @@
             }
         };
 
-        function goToRandom() {
-            const apps = ['freosan', 'bryne', 'hrinan', 'ginung', 'druh', 'ceorf', 'bloma', 'mynd', 'hrisian', 'tocnyssan', 'gleobeam', 'gimcynn', 'sceo', 'wudubora', 'hlof', 'hearg', 'organistre', 'ablawung', 'afindan', 'sceacel'];
-            let next = apps[Math.floor(Math.random() * apps.length)];
-            window.location.href = '../' + next + '/';
-        }
 
         // Initialize on load
         window.addEventListener('load', init);
