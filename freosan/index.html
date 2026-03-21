@@ -49,8 +49,6 @@
             z-index: 10;
         }
 
-     
-
         .load-btn {
             position: fixed;
             top: 24px;
@@ -116,9 +114,6 @@
             font-variant-numeric: tabular-nums;
         }
 
-
-
-
         canvas {
             position: absolute;
             top: 0;
@@ -148,8 +143,6 @@
         .status-indicator.visible {
             opacity: 0.6;
         }
-
-
     </style>
     <script src="../nav.js"></script>
 </head>
@@ -272,7 +265,6 @@
 
                 this.buffer = this.generateDroneBuffer();
 
-                // Load initial sample
                 fetch('../Audiofiles/Harpnotes.m4a')
                     .then(response => response.arrayBuffer())
                     .then(buffer => this.loadBuffer(buffer))
@@ -367,13 +359,18 @@
                 let offset, duration, gainMult;
 
                 if (state.isTouching) {
-                    const jitter = (Math.random() - 0.5) * state.params.spray * 0.1;
+                    // FIX: jitter now scales the random offset range meaningfully in touch mode
+                    const jitter = (Math.random() - 0.5) * state.params.spray * this.buffer.duration * 0.5;
                     offset = (state.touchX * this.buffer.duration) + jitter;
-                    duration = 0.1 + (state.params.size * 0.3);
+                    duration = 0.05 + (state.params.size * 0.8);
                     gainMult = 0.8;
                 } else {
-                    offset = (particle.x / window.innerWidth) * this.buffer.duration;
-                    duration = 0.2 + (state.params.size * 0.5);
+                    // FIX: jitter applied in free mode — randomises read position around particle's position
+                    const baseOffset = (particle.x / window.innerWidth) * this.buffer.duration;
+                    const jitter = (Math.random() - 0.5) * state.params.spray * this.buffer.duration * 0.5;
+                    offset = baseOffset + jitter;
+                    // FIX: length (size) now affects free mode duration properly
+                    duration = 0.05 + (state.params.size * 0.8);
                     gainMult = 0.8;
                 }
 
@@ -451,7 +448,7 @@
 
                     if (Math.random() < (state.params.density * 0.05)) {
                         Audio.triggerGrain(p);
-                        p.pulse();
+                        p.pulse(0.5 + state.params.size * 1.5);
                     }
                 });
 
@@ -472,6 +469,7 @@
                 this.vy = (Math.random() - 0.5) * 2;
                 this.size = 2;
                 this.active = 0;
+                this.sizeMult = 1.0;
             }
 
             update(touching, tx, ty) {
@@ -482,17 +480,20 @@
                     this.y += (targetY - this.y) * 0.1;
                     this.vx *= 0.8; this.vy *= 0.8;
                 } else {
-                    this.x += this.vx; this.y += this.vy;
+                    // FIX: free mode particle speed scales with jitter (spray)
+                    const speed = 1 + state.params.spray * 4;
+                    this.x += this.vx * speed;
+                    this.y += this.vy * speed;
                     if (this.x < 0 || this.x > this.w) this.vx *= -1;
                     if (this.y < 0 || this.y > this.h) this.vy *= -1;
                 }
-                if (this.active > 0) this.active -= 0.1;
+                if (this.active > 0) this.active -= 0.1 / Math.max(0.5, this.sizeMult);
             }
 
-            pulse() { this.active = 1.0; }
+            pulse(sizeMult = 1.0) { this.active = 1.0; this.sizeMult = sizeMult; }
 
             draw(ctx, blur) {
-                const size = this.size + (this.active * 4);
+                const size = (this.size + this.active * 8) * this.sizeMult;
                 const alpha = 0.3 + (this.active * 0.7);
 
                 if (blur > 2) {
@@ -579,13 +580,6 @@
         });
     </script>
 
-
-
-
-
-
-
-
     <!-- MIDI Integration -->
     <script src="../midi-handler.js"></script>
     <script>
@@ -596,23 +590,19 @@
                     return;
                 }
 
-                // Note Mapping
                 window.MIDIHandler.on('noteon', (data) => {
-                    if (!state.isPlaying) return; // Global rule: manual init
+                    if (!state.isPlaying) return;
 
                     const canvas = document.getElementById('glCanvas');
                     const rect = canvas.getBoundingClientRect();
 
-                    // MIDI X/Y mapping: X=pitch, Y=velocity
                     const x = (data.note / 127) * rect.width;
                     const y = (1 - (data.velocity / 127)) * rect.height;
 
-                    // Update state to simulate touch
                     state.isTouching = true;
                     state.touchX = x / rect.width;
                     state.touchY = y / rect.height;
 
-                    // Display touch status
                     document.getElementById('status-text').innerText = "MIDI FREEZING";
                     document.getElementById('status-text').classList.add('visible');
                 });
@@ -627,9 +617,8 @@
                     });
                 });
 
-                // CC Mapping
                 window.MIDIHandler.on('cc', (data) => {
-                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                    if (data.controller === 1) {
                         const masterG = Audio.master;
                         if (masterG && masterG.gain) {
                             masterG.gain.setTargetAtTime(data.value / 127, Audio.ctx.currentTime, 0.05);
