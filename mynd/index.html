@@ -323,7 +323,7 @@
                 this.touchFilter.connect(this.compressor);
 
                 this.masterGain = this.ctx.createGain();
-                this.masterGain.gain.value = 0.25;
+                this.masterGain.gain.value = 0.15;
                 this.masterGain.connect(this.touchFilter);
 
                 this.analyser = this.ctx.createAnalyser();
