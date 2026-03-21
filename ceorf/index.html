@@ -62,7 +62,6 @@
             padding: 32px;
         }
 
-        /* --- NEW NAVIGATION LAYOUT (three‑column grid) --- */
         #persistent-nav {
             position: fixed;
             top: 16px;
@@ -70,7 +69,7 @@
             transform: none;
             width: 100%;
             display: grid;
-            grid-template-columns: 1fr auto 1fr;  /* left spacer | center | right */
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
             padding: 0 24px;
             z-index: 10001;
@@ -95,9 +94,6 @@
             transition: opacity 1.5s ease;
         }
 
-        /* Buttons and upload label – unified style */
-
-
         .upload-btn {
             display: inline-block;
         }
@@ -106,16 +102,15 @@
             display: none;
         }
 
-        /* --- CONTROLS (bottom centre) --- */
         .controls-container {
-        position: absolute;
-        bottom: 20px;          /* distance from bottom edge */
-         left: 0;
-          width: 100%;
-           display: flex;
-           justify-content: center;
-           pointer-events: none;  /* keeps it non‑interactive */
-           }
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
 
         .controls-glass {
             background: var(--glass-bg);
@@ -145,10 +140,6 @@
             font-weight: 400;
         }
 
-        /* --- START OVERLAY (unchanged) --- */
-
-
-
         .instructions {
             margin-top: 24px;
             font-size: 10px;
@@ -159,7 +150,6 @@
             font-weight: 300;
         }
 
-        /* --- TOUCH INDICATOR (unchanged) --- */
         #touch-indicator {
             position: absolute;
             width: 60px;
@@ -191,9 +181,8 @@
     <script src="../nav.js"></script>
 </head>
 <body>
-    <!-- Persistent navigation: three‑column grid -->
     <div id="persistent-nav">
-        <div class="nav-left"></div> <!-- left spacer -->
+        <div class="nav-left"></div>
         <div class="nav-center">
             <button class="nav-btn" onclick="goToMenu()">M</button>
             <button class="nav-btn" onclick="goToRandom()">R</button>
@@ -214,7 +203,6 @@
             <div class="subtitle">SPECTRAL PULLER</div>
         </div>
 
-        <!-- Controls at bottom centre -->
         <div class="controls-container">
             <div class="controls-glass">
                 <div class="param-display">
@@ -245,7 +233,6 @@
     </div>
 
     <script>
-        // (Your full JavaScript remains exactly as provided – no changes needed)
         class FFT {
             constructor(size) {
                 this.size = size;
@@ -277,12 +264,9 @@
                 for (let i = 0; i < size; i++) {
                     const j = rev[i];
                     if (j > i) {
-                        const tempR = real[i];
-                        const tempI = imag[i];
-                        real[i] = real[j];
-                        imag[i] = imag[j];
-                        real[j] = tempR;
-                        imag[j] = tempI;
+                        const tempR = real[i]; const tempI = imag[i];
+                        real[i] = real[j]; imag[i] = imag[j];
+                        real[j] = tempR; imag[j] = tempI;
                     }
                 }
 
@@ -332,6 +316,8 @@
                 this.scriptNode = null;
                 this.fft = null;
                 this.gainNode = null;
+                this.compressor = null;
+                this.limiter = null;
 
                 this.bufferSize = 4096;
                 this.hopSize = 1024;
@@ -360,9 +346,7 @@
                 }
 
                 this.gateGain = 0;
-
                 this.currentRMS = 0;
-
                 this.audioAmplitude = 0;
                 this.smoothAmplitude = 0;
                 this.peakAmplitude = 0;
@@ -374,16 +358,34 @@
                 this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 this.fft = new FFT(this.bufferSize);
 
+                // Input gain — boosted to compensate for quiet source material
                 this.gainNode = this.ctx.createGain();
-                this.gainNode.gain.value = 1.0;
+                this.gainNode.gain.value = 2.5;
+
+                // Compressor: tames loud passages, lifts quiet ones
+                this.compressor = this.ctx.createDynamicsCompressor();
+                this.compressor.threshold.value = -18;
+                this.compressor.knee.value = 10;
+                this.compressor.ratio.value = 6;
+                this.compressor.attack.value = 0.003;
+                this.compressor.release.value = 0.15;
+
+                // Hard limiter: prevents clipping on any device
+                this.limiter = this.ctx.createDynamicsCompressor();
+                this.limiter.threshold.value = -2;
+                this.limiter.knee.value = 0;
+                this.limiter.ratio.value = 20;
+                this.limiter.attack.value = 0.001;
+                this.limiter.release.value = 0.05;
 
                 this.scriptNode = this.ctx.createScriptProcessor(this.bufferSize, 1, 1);
                 this.scriptNode.onaudioprocess = this.process.bind(this);
 
                 this.scriptNode.connect(this.gainNode);
-                this.gainNode.connect(this.ctx.destination);
+                this.gainNode.connect(this.compressor);
+                this.compressor.connect(this.limiter);
+                this.limiter.connect(this.ctx.destination);
 
-                // Load default file as requested
                 this.loadURL('../Audiofiles/Glock.m4a');
             }
 
@@ -392,19 +394,7 @@
                     const response = await fetch(url);
                     const arrayBuffer = await response.arrayBuffer();
                     this.buffer = await this.ctx.decodeAudioData(arrayBuffer);
-
-                    this.reversedBuffer = this.ctx.createBuffer(
-                        this.buffer.numberOfChannels,
-                        this.buffer.length,
-                        this.buffer.sampleRate
-                    );
-                    for (let c = 0; c < this.buffer.numberOfChannels; c++) {
-                        const src = this.buffer.getChannelData(c);
-                        const dest = this.reversedBuffer.getChannelData(c);
-                        for (let i = 0; i < this.buffer.length; i++) {
-                            dest[i] = src[this.buffer.length - 1 - i];
-                        }
-                    }
+                    this.buildReversedBuffer();
                     this.isPlaying = true;
                     document.getElementById('val-state').textContent = "READY";
                 } catch (e) {
@@ -415,7 +405,11 @@
             async loadFile(file) {
                 const arrayBuffer = await file.arrayBuffer();
                 this.buffer = await this.ctx.decodeAudioData(arrayBuffer);
+                this.buildReversedBuffer();
+                this.isPlaying = true;
+            }
 
+            buildReversedBuffer() {
                 this.reversedBuffer = this.ctx.createBuffer(
                     this.buffer.numberOfChannels,
                     this.buffer.length,
@@ -428,14 +422,11 @@
                         dest[i] = src[this.buffer.length - 1 - i];
                     }
                 }
-
-                this.isPlaying = true;
             }
 
             setParams(angle, distance, isTouching) {
                 let normAngle = angle / (2 * Math.PI);
                 if (normAngle < 0) normAngle += 1;
-
                 this.scrubPosition = normAngle;
                 this.smearAmount = Math.max(0, Math.min(1, distance));
                 this.isTouching = isTouching;
@@ -528,7 +519,6 @@
 
                     const fwdSample = chanData[idx];
                     const revSample = revData[revIdx];
-
                     const mixedSample = fwdSample + (revSample * reverseMix * 0.8);
 
                     this.real[i] = mixedSample * this.window[i];
@@ -636,9 +626,7 @@
                     let dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
 
                     let smear = 0;
-                    if (dist > 0.1) {
-                        smear = (dist - 0.1) / 0.9;
-                    }
+                    if (dist > 0.1) smear = (dist - 0.1) / 0.9;
                     smear = Math.max(0, Math.min(1, smear));
 
                     this.audio.setParams(angle, smear, true);
@@ -668,9 +656,7 @@
                 window.addEventListener('mouseup', this.endInteraction);
 
                 window.addEventListener('touchstart', (e) => {
-                    if (e.target.closest('button, input, label')) {
-                        return;
-                    }
+                    if (e.target.closest('button, input, label')) return;
                     e.preventDefault();
                     this.handleMove(e.touches[0].clientX, e.touches[0].clientY);
                 }, { passive: false });
@@ -696,15 +682,13 @@
 
                 const hasActivity = this.audio.isTouching || this.audio.smoothAmplitude > 0.01;
 
+                ctx.globalCompositeOperation = 'source-over';
                 if (hasActivity) {
-                    ctx.globalCompositeOperation = 'source-over';
                     ctx.fillStyle = 'rgba(5, 5, 5, 0.03)';
-                    ctx.fillRect(0, 0, w, h);
                 } else {
-                    ctx.globalCompositeOperation = 'source-over';
                     ctx.fillStyle = '#050505';
-                    ctx.fillRect(0, 0, w, h);
                 }
+                ctx.fillRect(0, 0, w, h);
 
                 if (!this.audio.isPlaying || !this.audio.buffer) return;
 
@@ -716,9 +700,7 @@
                 const drawCount = 256;
                 const binStep = Math.floor(halfSize / drawCount);
 
-                const baseRadius = Math.min(w, h) * 0.05;
                 const amplitudeFactor = Math.min(this.audio.smoothAmplitude * 100, 1.0);
-
                 const touchFactor = this.audio.gateGain;
                 const baseGrowth = touchFactor * (Math.min(w, h) * 0.15);
                 const minRadius = baseGrowth + (amplitudeFactor * Math.min(w, h) * 0.15);
@@ -729,7 +711,6 @@
                 ctx.lineWidth = 2;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-
                 ctx.strokeStyle = `rgba(255, 255, 255, 0.9)`;
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = `rgba(255, 255, 255, 0.6)`;
@@ -744,12 +725,12 @@
                     const rot = this.audio.smoothScrubPosition * 2 * Math.PI;
 
                     const r = minRadius + Math.min(mag, maxRadius - minRadius);
-
                     const x = cx + Math.cos(angle + rot) * r;
                     const y = cy + Math.sin(angle + rot) * r;
 
-                    if (i === 0) ctx.moveTo(x, y);
-                    else {
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
                         const prevAngle = ((i - 1) / drawCount) * 2 * Math.PI;
                         const prevIdx = ((i - 1) % drawCount) * binStep;
                         let prevMag = Math.abs(data[prevIdx]);
@@ -757,10 +738,8 @@
                         const prevR = minRadius + Math.min(prevMag, maxRadius - minRadius);
                         const prevX = cx + Math.cos(prevAngle + rot) * prevR;
                         const prevY = cy + Math.sin(prevAngle + rot) * prevR;
-
                         const midX = (prevX + x) / 2;
                         const midY = (prevY + y) / 2;
-
                         if (i === 1) ctx.lineTo(midX, midY);
                         else ctx.quadraticCurveTo(prevX, prevY, midX, midY);
                     }
@@ -774,10 +753,8 @@
             drawVolumeDisplay(ctx, cx, cy, maxRadius) {
                 const volume = this.audio.smoothAmplitude;
                 const peak = this.audio.peakAmplitude;
-
                 const touchFactor = this.audio.gateGain;
                 const displayRadius = maxRadius * (0.3 + touchFactor * 0.7);
-
                 const vuRadius = Math.min(displayRadius * 0.8, volume * displayRadius * 3);
                 const peakRadius = Math.min(displayRadius * 0.9, peak * displayRadius * 3);
 
@@ -807,19 +784,14 @@
 
                     const history = this.audio.volumeHistory;
                     const segmentAngle = (Math.PI * 2) / history.length;
-
                     ctx.beginPath();
                     for (let i = 0; i < history.length; i++) {
                         const angle = i * segmentAngle;
                         const waveRadius = displayRadius * 0.6 + (history[i] * displayRadius * 2);
                         const x = cx + Math.cos(angle) * waveRadius;
                         const y = cy + Math.sin(angle) * waveRadius;
-
-                        if (i === 0) {
-                            ctx.moveTo(x, y);
-                        } else {
-                            ctx.lineTo(x, y);
-                        }
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
                     }
                     ctx.closePath();
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
@@ -834,11 +806,10 @@
             }
         };
 
-
         window.onload = () => app.init();
     </script>
 
-    <!-- MIDI Integration (unchanged) -->
+    <!-- MIDI Integration -->
     <script src="../midi-handler.js"></script>
     <script>
         (function () {
@@ -848,11 +819,8 @@
                     return;
                 }
 
-                console.log("Setting up MIDI with Centroid Snapping and Integer Mapping for " + document.title);
-
-                // Note Mapping
                 window.MIDIHandler.on('noteon', (data) => {
-                    if (!app || !app.audio || !app.audio.ctx) return; // Global rule: manual init
+                    if (!app || !app.audio || !app.audio.ctx) return;
 
                     const w = window.innerWidth;
                     const h = window.innerHeight;
@@ -860,7 +828,6 @@
                     const cy = h / 2;
                     const maxDist = Math.min(w, h) / 2;
 
-                    // MIDI X/Y mapping: Pitch -> Angle, Velocity -> Distance
                     const angle = (data.note / 127) * 2 * Math.PI;
                     const dist = (data.velocity / 127) * maxDist;
 
@@ -872,15 +839,14 @@
                     }
                 });
 
-                window.MIDIHandler.on('noteoff', (data) => {
+                window.MIDIHandler.on('noteoff', () => {
                     if (app && typeof app.endInteraction === 'function') {
                         app.endInteraction();
                     }
                 });
 
-                // CC Mapping
                 window.MIDIHandler.on('cc', (data) => {
-                    if (data.controller === 1) { // Mod Wheel -> Master Volume
+                    if (data.controller === 1) {
                         if (app && app.audio && app.audio.gainNode) {
                             app.audio.gainNode.gain.setTargetAtTime(data.value / 127, app.audio.ctx.currentTime, 0.05);
                         }
