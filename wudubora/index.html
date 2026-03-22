@@ -398,7 +398,7 @@
 
                 // === MAIN AUDIO CHAIN – ALL GAINS BOOSTED FOR VOLUME ===
                 masterGain = audioCtx.createGain();
-                masterGain.gain.value = 1.0;   // Normal master gain (was 400)
+                masterGain.gain.value = 0.75;   // Normal master gain (was 400)
 
                 reverbNode = audioCtx.createConvolver();
                 reverbNode.buffer = createReverbImpulse(audioCtx);
