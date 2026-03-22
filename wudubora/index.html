@@ -433,8 +433,8 @@
                 feedbackR = audioCtx.createGain();
                 delayMix = audioCtx.createGain();
 
-                feedbackL.gain.value = 0.5;
-                feedbackR.gain.value = 0.5;
+                feedbackL.gain.value = 0.25;
+                feedbackR.gain.value = 0.25;
                 delayMix.gain.value = 0.5;
 
                 delayL.connect(feedbackL);
