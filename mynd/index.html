@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>MYND — LOOP & DEGRADE</title>
+    <title>MYND</title>
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #888888;
+            --font-main: 'Josefin Sans', sans-serif;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,9 +21,9 @@
         }
 
         body {
-            background-color: #000000;
-            color: #ffffff;
-            font-family: 'Josefin Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
             height: 100vh;
             height: 100dvh;
             width: 100vw;
@@ -148,7 +155,7 @@
             100% { opacity: 0.3; transform: scale(1);}
         }
 
-        /* START OVERLAY */
+        /* Start Overlay – original style */
         #start-overlay {
             position: fixed;
             top: 0;
@@ -162,9 +169,8 @@
             align-items: center;
             justify-content: center;
             gap: 2rem;
-            backdrop-filter: blur(8px);
-            transition: opacity 0.4s ease;
             pointer-events: auto;
+            transition: opacity 0.4s ease;
         }
 
         .start-btn {
@@ -264,7 +270,7 @@
 
     <script>
         // --------------------------------------------------------------
-        //  UTILS: distortion curve (efficient)
+        //  UTILS: efficient distortion curve
         // --------------------------------------------------------------
         function makeDistortionCurve(amount) {
             const k = amount * 150;
@@ -278,7 +284,7 @@
         }
 
         // --------------------------------------------------------------
-        //  MAIN AUDIO ENGINE (fixed syntax + proper this bindings)
+        //  MAIN AUDIO ENGINE (fixed initialisation & robust methods)
         // --------------------------------------------------------------
         class TapeLoopEngine {
             constructor() {
@@ -287,7 +293,7 @@
                 this.compressor = null;
                 this.analyser = null;
                 this.limiter = null;
-                this.touchFilter = null;      // master lowpass (Y control)
+                this.touchFilter = null;
 
                 this.mediaRecorder = null;
                 this.audioChunks = [];
@@ -306,7 +312,6 @@
                 this.currentFilterCutoff = 8000;
                 this.currentGrainDensity = 0.5;
                 this.currentPlaybackRate = 1.0;
-                this.panAmount = 0;
                 this.recordingLength = 8;
 
                 this.inputGain = null;
@@ -351,7 +356,7 @@
                         this._removeUnlockListeners();
                     }
                 }).catch(e => console.warn);
-                // tiny silent buffer to force audio context activation
+                // Play a silent buffer to kickstart audio context
                 const buffer = this.ctx.createBuffer(1, 1, 22050);
                 const source = this.ctx.createBufferSource();
                 source.buffer = buffer;
@@ -366,7 +371,6 @@
             }
 
             setupAudioGraph() {
-                // Brickwall limiter (safe ceiling)
                 this.limiter = this.ctx.createDynamicsCompressor();
                 this.limiter.threshold.value = -2;
                 this.limiter.knee.value = 0;
@@ -375,7 +379,6 @@
                 this.limiter.release.value = 0.05;
                 this.limiter.connect(this.ctx.destination);
 
-                // Main compressor
                 this.compressor = this.ctx.createDynamicsCompressor();
                 this.compressor.threshold.value = -24;
                 this.compressor.knee.value = 6;
@@ -384,7 +387,6 @@
                 this.compressor.release.value = 0.1;
                 this.compressor.connect(this.limiter);
 
-                // Touch-controlled lowpass (Y axis)
                 this.touchFilter = this.ctx.createBiquadFilter();
                 this.touchFilter.type = 'lowpass';
                 this.touchFilter.frequency.value = 18000;
@@ -484,7 +486,6 @@
                 active.forEach(g => {
                     if (g) g.gain.setTargetAtTime(perLoopGain, this.ctx.currentTime, 0.08);
                 });
-                // also rebalance granular processor nodes if needed
                 for (let i = 0; i < this.loopGrains.length; i++) {
                     if (this.loopGrains[i] && this.loopGrains[i].node) {
                         this.loopGrains[i].node.gain.setTargetAtTime(perLoopGain * 0.45, this.ctx.currentTime, 0.08);
@@ -530,7 +531,6 @@
                 this.loopPanners.push(panner);
                 this.loopShapers.push(shaper);
 
-                // Granular processor for this loop
                 const granularNode = this.ctx.createGain();
                 granularNode.gain.value = initialGain * 0.45;
                 granularNode.connect(this.masterGain);
@@ -556,7 +556,7 @@
                 const startTime = this.ctx.currentTime;
                 const gainNode = this.loopGains[loopIndex];
                 const filter = this.loopFilters[loopIndex];
-                const decayTime = 46; // seconds
+                const decayTime = 46;
 
                 if (gainNode) {
                     gainNode.gain.linearRampToValueAtTime(gainNode.gain.value, startTime);
@@ -567,12 +567,10 @@
                     filter.frequency.linearRampToValueAtTime(900, startTime + decayTime);
                 }
 
-                // schedule granular disintegration after 8 seconds
                 setTimeout(() => {
                     if (this.loopGrains[loopIndex]) this.startGranularDisintegration(loopIndex);
                 }, 8000);
 
-                // complete removal after decayTime
                 setTimeout(() => {
                     if (this.loopSources[loopIndex]) {
                         try { this.loopSources[loopIndex].stop(); } catch(e) {}
@@ -597,7 +595,6 @@
                     }
                     this.loopSources[loopIndex] = null;
 
-                    // compact arrays
                     const keepMask = this.loopSources.map((_, idx) => this.loopSources[idx] !== null || this.loopGrains[idx] !== null);
                     this.loopSources = this.loopSources.filter((_, idx) => keepMask[idx]);
                     this.loopGains = this.loopGains.filter((_, idx) => keepMask[idx]);
@@ -623,7 +620,6 @@
                 const now = this.ctx.currentTime;
                 processor.activeGrains = processor.activeGrains.filter(g => g.endTime > now);
 
-                // global grain cap to avoid CPU overload
                 let totalActiveGrains = 0;
                 for (let gproc of this.loopGrains) if (gproc) totalActiveGrains += gproc.activeGrains.length;
                 if (totalActiveGrains > 28) {
@@ -939,7 +935,7 @@
 
         window.onload = () => app.init();
 
-        // simple dummy nav functions to avoid errors if nav.js missing
+        // Dummy nav functions (replace with actual if needed)
         window.goToMenu = function() { console.log("menu placeholder"); };
         window.goToRandom = function() { console.log("random placeholder"); };
     </script>
