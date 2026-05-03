@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
-    <title>Vinyl Crackle Touch</title>
+    <title>Noise Beats</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
@@ -240,7 +240,7 @@
         <div id="ui-layer">
             <div class="title-block">
                 <div class="title">DRUH</div>
-                <div class="subtitle">VINYL CRACKLE TOUCH</div>
+                <div class="subtitle">NOISE BEATS</div>
             </div>
             <div class="top-controls">
                 <div class="pattern-indicator" id="pattern-indicator">
@@ -269,6 +269,12 @@
         let panner;
         let masterGain;
         let analyser;
+        let barRepeatDelay;
+        let barRepeatDry;
+        let barRepeatWet;
+        let barRepeatWetLP;
+        let masterTilt;
+        let masterGlue;
 
         let schedulerTimer;
         let nextNoteTime = 0.0;
@@ -289,6 +295,10 @@
         let rateDivider = 4;
         let currentFilterType = 'bandpass';
 
+        let surfaceAggro = 0;
+        let moveExcite = 0;
+        let lastPointer = { x: 0.5, y: 0.5, t: performance.now() };
+
         const noiseAlgorithms = {
             vinylCrackle: (function () {
                 let burstLevel = 0;
@@ -296,10 +306,12 @@
                 let burstCounter = 0;
 
                 return function () {
-                    if (Math.random() < 0.015) {
-                        burstLevel = (Math.random() * 0.5 + 0.5) * 2.0;
-                        burstDecay = 0.92 + (Math.random() * 0.05);
-                        burstCounter = Math.floor(Math.random() * 20 + 5);
+                    const spawnChance = 0.08 + surfaceAggro * 0.45;
+                    if (Math.random() < spawnChance) {
+                        const hot = 1 + surfaceAggro * 4.0;
+                        burstLevel = (Math.random() * 0.5 + 0.5) * 6.0 * hot;
+                        burstDecay = 0.94 + (Math.random() * 0.04);
+                        burstCounter = Math.floor((Math.random() * 60 + 20) * (1.0 + surfaceAggro * 1.5));
                     }
 
                     if (burstCounter > 0) {
@@ -308,7 +320,8 @@
                         burstLevel *= burstDecay;
                         return noise;
                     }
-                    return (Math.random() * 2 - 1) * 0.04;
+                    const bed = 0.05 + surfaceAggro * 0.2;
+                    return (Math.random() * 2 - 1) * bed;
                 };
             })()
         };
@@ -330,6 +343,16 @@
             }
         }
         initPatternDots();
+
+        function beatDurationSec() {
+            return 60 / bpm;
+        }
+
+        function updateBarRepeatDelay() {
+            if (!audioCtx || !barRepeatDelay) return;
+            const quarterNoteSec = beatDurationSec();
+            barRepeatDelay.delayTime.setTargetAtTime(Math.min(quarterNoteSec, 3.95), audioCtx.currentTime, 0.05);
+        }
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -387,7 +410,46 @@
                 rightGain.connect(merger, 0, 1);
 
                 merger.connect(panner);
-                panner.connect(masterGain);
+
+                masterTilt = audioCtx.createBiquadFilter();
+                masterTilt.type = 'highshelf';
+                masterTilt.frequency.value = 2400;
+                masterTilt.Q.value = 0.55;
+                masterTilt.gain.value = 0;
+
+                masterGlue = audioCtx.createWaveShaper();
+                const glueSamples = 256;
+                const glueCurve = new Float32Array(glueSamples);
+                for (let i = 0; i < glueSamples; i++) {
+                    const x = (i * 2) / (glueSamples - 1) - 1;
+                    glueCurve[i] = Math.tanh(x * 1.35) * 0.92;
+                }
+                masterGlue.curve = glueCurve;
+                masterGlue.oversample = '2x';
+
+                panner.connect(masterTilt);
+                masterTilt.connect(masterGlue);
+
+                barRepeatDelay = audioCtx.createDelay(4.0);
+                barRepeatDelay.delayTime.value = Math.min(beatDurationSec(), 3.95);
+                barRepeatDry = audioCtx.createGain();
+                barRepeatDry.gain.value = 1;
+                barRepeatWetLP = audioCtx.createBiquadFilter();
+                barRepeatWetLP.type = 'lowpass';
+                barRepeatWetLP.frequency.value = 3200;
+                barRepeatWetLP.Q.value = 0.7;
+                barRepeatWet = audioCtx.createGain();
+                barRepeatWet.gain.value = 1.72;
+
+                masterGlue.connect(barRepeatDry);
+                masterGlue.connect(barRepeatDelay);
+                barRepeatDelay.connect(barRepeatWetLP);
+                barRepeatWetLP.connect(barRepeatWet);
+                barRepeatDry.connect(masterGain);
+                barRepeatWet.connect(masterGain);
+
+                updateBarRepeatDelay();
+
                 masterGain.connect(analyser);
                 analyser.connect(audioCtx.destination);
 
@@ -423,8 +485,9 @@
             if (noteCount % rateDivider !== 0) return;
 
             const quantizeNorm = quantize / 100;
+            const ex = moveExcite;
 
-            const continuousProb = (1 - quantizeNorm) * 2.5;
+            const continuousProb = (1 - quantizeNorm) * 2.5 + ex * 0.55;
 
             const leftValue = getPatternValue(noteCount, 'left');
             const rightValue = getPatternValue(noteCount, 'right');
@@ -432,8 +495,9 @@
             const leftContinuous = Math.random() < continuousProb;
             const rightContinuous = Math.random() < continuousProb;
 
-            const leftRhythmic = (Math.random() * 100) < (density * leftValue * quantizeNorm);
-            const rightRhythmic = (Math.random() * 100) < (density * rightValue * quantizeNorm);
+            const rhythmBias = 1 + ex * 0.45;
+            const leftRhythmic = (Math.random() * 100) < (density * leftValue * quantizeNorm * rhythmBias);
+            const rightRhythmic = (Math.random() * 100) < (density * rightValue * quantizeNorm * rhythmBias);
 
             const leftShouldPlay = leftContinuous || leftRhythmic;
             const rightShouldPlay = rightContinuous || rightRhythmic;
@@ -442,28 +506,31 @@
                 leftFilter.type = currentFilterType;
                 rightFilter.type = currentFilterType;
             }
-            leftFilter.Q.value = filterQ;
-            rightFilter.Q.value = filterQ;
+            const qExcite = filterQ * (1 + ex * 2.8);
+            leftFilter.Q.value = qExcite;
+            rightFilter.Q.value = qExcite;
 
             if (panner) {
                 panner.pan.setTargetAtTime(panVal, time, 0.05);
             }
 
             const duration = (60 / bpm / 16) * rateDivider;
+            const gainExcite = 0.68 + ex * 0.95;
 
             if (leftShouldPlay) {
-                const jitter = (Math.random() * 2 - 1) * 0.005;
+                const jitter = (Math.random() * 2 - 1) * (0.004 + ex * 0.012);
                 const triggerTime = time + jitter;
 
-                const baseGain = leftContinuous ?
-                    0.15 * (1 - quantizeNorm) :
-                    leftValue * quantizeNorm * 3.0;
+                let baseGain = leftContinuous ?
+                    0.4 * (1 - quantizeNorm) :
+                    leftValue * quantizeNorm * 5.0;
+                baseGain *= gainExcite * (1.08 + surfaceAggro * 0.22);
 
                 const filterBoost = 1.0 + (leftValue * 0.8 * quantizeNorm);
 
                 leftFilter.frequency.cancelScheduledValues(triggerTime);
                 leftFilter.frequency.setValueAtTime(filterFreq * filterBoost, triggerTime);
-                leftFilter.frequency.exponentialRampToValueAtTime(Math.max(filterFreq, 20), triggerTime + (duration * 0.5));
+                leftFilter.frequency.exponentialRampToValueAtTime(Math.max(filterFreq, 20), triggerTime + (duration * (0.42 + ex * 0.18)));
 
                 leftGain.gain.cancelScheduledValues(triggerTime);
                 leftGain.gain.setValueAtTime(baseGain, triggerTime);
@@ -474,18 +541,19 @@
             }
 
             if (rightShouldPlay) {
-                const jitter = (Math.random() * 2 - 1) * 0.005;
+                const jitter = (Math.random() * 2 - 1) * (0.004 + ex * 0.012);
                 const triggerTime = time + jitter;
 
-                const baseGain = rightContinuous ?
-                    0.15 * (1 - quantizeNorm) :
-                    rightValue * quantizeNorm * 3.0;
+                let baseGain = rightContinuous ?
+                    0.4 * (1 - quantizeNorm) :
+                    rightValue * quantizeNorm * 5.0;
+                baseGain *= gainExcite * (1.08 + surfaceAggro * 0.22);
 
                 const filterBoost = 1.0 + (rightValue * 0.8 * quantizeNorm);
 
                 rightFilter.frequency.cancelScheduledValues(triggerTime);
                 rightFilter.frequency.setValueAtTime(filterFreq * filterBoost, triggerTime);
-                rightFilter.frequency.exponentialRampToValueAtTime(Math.max(filterFreq, 20), triggerTime + (duration * 0.5));
+                rightFilter.frequency.exponentialRampToValueAtTime(Math.max(filterFreq, 20), triggerTime + (duration * (0.42 + ex * 0.18)));
 
                 rightGain.gain.cancelScheduledValues(triggerTime);
                 rightGain.gain.setValueAtTime(baseGain, triggerTime);
@@ -532,23 +600,30 @@
             const dist = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx);
 
+            const now = performance.now();
+            const dt = Math.max(10, now - lastPointer.t);
+            const step = Math.hypot(x - lastPointer.x, y - lastPointer.y);
+            const speed = Math.min(4.5, (step / dt) * 900);
+            moveExcite = Math.min(1, moveExcite * 0.86 + speed * 0.24);
+            lastPointer = { x, y, t: now };
 
-            if (dist < 0.25) {
+            if (dist < 0.15) {
+                rateDivider = 16;
+            } else if (dist < 0.35) {
                 rateDivider = 8;
-            } else if (dist < 0.45) {
+            } else if (dist < 0.6) {
                 rateDivider = 4;
-            } else if (dist < 0.55) {
+            } else if (dist < 0.8) {
                 rateDivider = 2;
             } else {
                 rateDivider = 1;
             }
 
+            let paramPos = Math.min(dist / 0.52, 1.0);
 
-            let paramPos = Math.min(dist / 0.5, 1.0);
+            density = 82 + (paramPos * 16) + moveExcite * 7;
 
-            density = 90 + (paramPos * 10);
-
-            quantize = Math.floor((1.0 - Math.pow(paramPos, 2)) * 100);
+            quantize = Math.floor((1.0 - Math.pow(paramPos, 1.65)) * 100);
 
             stereoWidth = 100 - (paramPos * 70);
 
@@ -562,22 +637,30 @@
                 currentFilterType = 'notch';
             }
 
-
-            const angleNorm = (angle + Math.PI) / (2 * Math.PI);
-            filterFreq = 50 + (angleNorm * 10000);
+            filterFreq = 150 - (paramPos * 90) + (moveExcite * 15);
 
             if (rateDivider >= 4) {
-                filterQ = 0.005 + (Math.random() * 0.015);
+                filterQ = 2.0 + (Math.random() * 8.0) + moveExcite * 12.0;
             } else {
-                filterQ = 0.001 + (paramPos * 0.02);
+                filterQ = 1.0 + (paramPos * 10.0) + moveExcite * 18.0;
             }
 
+            surfaceAggro = Math.min(1, paramPos * 0.55 + moveExcite * 0.65 + (1 - y) * 0.12);
+
             panVal = (x * 2) - 1;
+
+            if (masterTilt && audioCtx) {
+                const tiltDb = -10 + (1 - y) * 8 + moveExcite * 2;
+                masterTilt.gain.setTargetAtTime(tiltDb, audioCtx.currentTime, 0.055);
+            }
 
             touchMarker.style.left = (x * 100) + '%';
             touchMarker.style.top = (y * 100) + '%';
 
-            touchMarker.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+            const pulse = 1 + moveExcite * 0.55;
+            touchMarker.style.transform = `translate(-50%, -50%) rotate(${angle}rad) scale(${pulse})`;
+            touchMarker.style.borderColor = `rgba(255,255,255,${0.22 + moveExcite * 0.45})`;
+            touchMarker.style.boxShadow = `0 0 ${12 + moveExcite * 28}px rgba(255,255,255,${0.08 + moveExcite * 0.2})`;
             touchMarker.style.fontSize = "10px";
             touchMarker.style.textAlign = "center";
             touchMarker.style.display = "flex";
@@ -609,11 +692,17 @@
 
         function endInteraction() {
             isTouching = false;
+            moveExcite = 0;
+            surfaceAggro = 0;
             touchMarker.classList.remove('active');
 
-            if (masterGain) {
-                masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+            if (masterGain && audioCtx) {
+                const beat = beatDurationSec();
+                const tailSec = Math.min(beat * 4 + 0.35, 3.5);
+                const now = audioCtx.currentTime;
+                masterGain.gain.cancelScheduledValues(now);
+                masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+                masterGain.gain.linearRampToValueAtTime(0, now + tailSec);
             }
         }
 
@@ -657,6 +746,7 @@
         bpmInput.addEventListener('input', (e) => {
             bpm = parseInt(e.target.value);
             bpmVal.textContent = bpm;
+            updateBarRepeatDelay();
             e.stopPropagation();
         });
 
@@ -692,31 +782,47 @@
             requestAnimationFrame(draw);
             if (!analyser) return;
 
+            if (isTouching) {
+                moveExcite *= 0.972;
+            }
+
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             analyser.getByteTimeDomainData(dataArray);
 
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            const fade = 0.25 + (isTouching ? 0.2 + moveExcite * 0.15 : 0.1);
+            ctx.fillStyle = `rgba(0, 0, 0, ${fade})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
             const maxR = Math.min(cx, cy);
+            const ringBreath = 1 + moveExcite * 0.08 + (isTouching ? 0.03 : 0);
 
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
             ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.5 * ringBreath, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.05 + moveExcite * 0.06})`;
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.9 * ringBreath, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 1.08 * ringBreath, 0, Math.PI * 2); ctx.stroke();
 
-            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.5, 0, Math.PI * 2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.9, 0, Math.PI * 2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(cx, cy, maxR * 1.1, 0, Math.PI * 2); ctx.stroke();
-
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR, cy); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + maxR); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - maxR, cy); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - maxR); ctx.stroke();
 
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            let rms = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                const d = dataArray[i] / 128 - 1;
+                rms += d * d;
+            }
+            rms = Math.sqrt(rms / bufferLength);
+
+            ctx.lineWidth = 1.5 + Math.min(rms, 0.6) * 10 + moveExcite * 2;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 + moveExcite * 0.25 + Math.min(rms, 0.6) * 0.4})`;
+            ctx.shadowBlur = 4 + moveExcite * 10;
+            ctx.shadowColor = 'rgba(255,255,255,0.25)';
             ctx.beginPath();
 
             const sliceWidth = canvas.width * 1.0 / bufferLength;
@@ -733,6 +839,7 @@
             }
 
             ctx.stroke();
+            ctx.shadowBlur = 0;
         }
         draw();
 
@@ -802,6 +909,7 @@
                             const bpmVal = document.getElementById('bpm-val');
                             if (bpmInput) bpmInput.value = bpm;
                             if (bpmVal) bpmVal.textContent = bpm;
+                            updateBarRepeatDelay();
                         }
                     } else {
                         clockStartTime = now;

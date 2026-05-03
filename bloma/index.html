@@ -287,6 +287,7 @@
                 this.compressor = null;
                 this.analyser = null;
                 this.lowpassFilter = null;
+                this.softLowpass = null;
 
                 this.carrier = null;
                 this.modulator = null;
@@ -418,9 +419,15 @@
                 this.chopperGain.gain.value = 1;
                 this.chopperGain.connect(this.masterGain);
 
+                this.softLowpass = this.ctx.createBiquadFilter();
+                this.softLowpass.type = 'lowpass';
+                this.softLowpass.frequency.value = 3200;
+                this.softLowpass.Q.value = 0.7;
+
                 this.analyser = this.ctx.createAnalyser();
                 this.analyser.fftSize = 2048;
-                this.compressor.connect(this.analyser);
+                this.compressor.connect(this.softLowpass);
+                this.softLowpass.connect(this.analyser);
                 this.analyser.connect(this.ctx.destination);
 
                 this.updateDelaySettings();
@@ -526,7 +533,7 @@
 
                 if (this.masterGain) {
                     this.masterGain.gain.cancelScheduledValues(now);
-                    this.masterGain.gain.setTargetAtTime(0.5, now, 0.01);
+                    this.masterGain.gain.setTargetAtTime(0.25, now, 0.01);
                 }
 
                 if (this.chopperGain) {
@@ -673,7 +680,7 @@
                 this.fmGain.gain.setTargetAtTime(1 - Math.pow(this.mix, 2), now, 0.05);
                 this.ksOutputGain.gain.setTargetAtTime(Math.pow(this.mix, 2), now, 0.05);
 
-                const cutoffFreq = 500 + (1 - y) * 8000;
+                const cutoffFreq = 400 + (1 - y) * 4600;
                 this.lowpassFilter.frequency.setTargetAtTime(cutoffFreq, now, 0.05);
 
                 if (this.isPlaying) {
@@ -726,7 +733,7 @@
                 if (this.masterGain) {
                     this.masterGain.gain.cancelScheduledValues(now);
                     this.masterGain.gain.setValueAtTime(0, now);
-                    this.masterGain.gain.linearRampToValueAtTime(velocity * 0.8, now + 0.005);
+                    this.masterGain.gain.linearRampToValueAtTime(velocity * 0.4, now + 0.005);
                     this.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4); // Extended MIDI impulse length
                 }
 

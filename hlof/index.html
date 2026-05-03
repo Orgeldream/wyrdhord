@@ -228,6 +228,10 @@
             ctx = canvas.getContext('2d');
             resize();
             window.addEventListener('resize', resize);
+            const containerEl = document.getElementById('container');
+            if (window.ResizeObserver) {
+                new ResizeObserver(() => resize()).observe(containerEl);
+            }
             document.getElementById('init-btn').onclick = initAudio;
 
             canvas.addEventListener('pointerdown', handlePointerDown);
@@ -238,8 +242,9 @@
         };
 
         function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight - 50;
+            const container = document.getElementById('container');
+            width = canvas.width = container.clientWidth;
+            height = canvas.height = container.clientHeight;
             initElements();
         }
 

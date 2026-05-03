@@ -496,7 +496,7 @@
             feedbackEnvelope = new Tone.Gain(0.0);
             inputEnvelope = new Tone.Gain(0.0);
 
-            const gainMultiplier = isMobile ? 2.5 : 1.0;
+            const gainMultiplier = isMobile ? 3.75 : 1.5;
             inputGain = new Tone.Gain(1.5 * gainMultiplier);
             feedbackGain = new Tone.Gain(0.85);
             mainGain = new Tone.Gain(1.2 * gainMultiplier);

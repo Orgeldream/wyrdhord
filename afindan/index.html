@@ -382,21 +382,36 @@
             animate();
         }
 
+        function clientToCanvasXY(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const sx = canvas.width / Math.max(rect.width, 1);
+            const sy = canvas.height / Math.max(rect.height, 1);
+            return {
+                x: (clientX - rect.left) * sx,
+                y: (clientY - rect.top) * sy
+            };
+        }
+
         function setupInteraction() {
             const updateTarget = (e) => {
                 if (!isStarted || !audioInitialized) return;
 
                 if (e.target.closest('.nav-btn')) return;
 
-                const x = e.touches ? e.touches[0].clientX : e.clientX;
-                const y = e.touches ? e.touches[0].clientY : e.clientY;
-                wanderer.targetX = x;
-                wanderer.targetY = y;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const p = clientToCanvasXY(clientX, clientY);
+                wanderer.targetX = p.x;
+                wanderer.targetY = p.y;
                 autoMode = false;
                 document.getElementById('auto-btn').classList.remove('active');
             };
 
             window.addEventListener('mousemove', updateTarget);
+            window.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.nav-btn')) return;
+                updateTarget(e);
+            }, { passive: true });
             window.addEventListener('touchmove', (e) => {
                 if (e.target.closest('.nav-btn')) return;
                 e.preventDefault();
@@ -415,10 +430,11 @@
                 tapOverlay.classList.remove('visible');
                 setTimeout(() => { tapOverlay.style.display = 'none'; }, 800);
 
-                const x = e.touches ? e.touches[0].clientX : e.clientX;
-                const y = e.touches ? e.touches[0].clientY : e.clientY;
-                wanderer.targetX = x;
-                wanderer.targetY = y;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const p = clientToCanvasXY(clientX, clientY);
+                wanderer.targetX = p.x;
+                wanderer.targetY = p.y;
 
                 window.removeEventListener('click', activateAudio);
                 window.removeEventListener('touchstart', tapHandler);
@@ -666,16 +682,12 @@
                 window.MIDIHandler.on('noteon', (data) => {
                     if (!isStarted) return; // Global rule: check for manual init
 
-                    const canvas = document.getElementById('canvas');
-                    const rect = canvas.getBoundingClientRect();
-
-                    // MIDI XY Mapping: X = Pitch, Y = Velocity
-                    const midiX = (data.note / 127) * rect.width;
-                    const midiY = (1 - (data.velocity / 127)) * rect.height;
+                    const c = document.getElementById('canvas');
+                    const midiX = (data.note / 127) * c.width;
+                    const midiY = (1 - (data.velocity / 127)) * c.height;
 
                     window.midiTouch = { x: midiX, y: midiY, active: true, intensity: 1.0 };
 
-                    // Update wanderer target
                     window.wanderer.targetX = midiX;
                     window.wanderer.targetY = midiY;
                     window.autoMode = false;

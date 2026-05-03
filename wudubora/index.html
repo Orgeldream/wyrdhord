@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="format-detection" content="telephone=no">
     <title>BAMBOO MARIMBA</title>
     <link rel="stylesheet" href="../nav.css">
     <style>
@@ -28,12 +29,15 @@
         body {
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             background: var(--bg-color);
             color: var(--text-color);
             font-family: var(--font-main);
             touch-action: none;
             user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
 
         canvas {
@@ -43,6 +47,9 @@
             width: 100%;
             height: 100%;
             z-index: 1;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         #ui-layer {
@@ -706,6 +713,16 @@
         let seqOn = false, genOn = false, tempo = 120, dens = 0.5, damp = 0.6, lastT = 0, lastI = 22;
         const activeTouches = new Map();
 
+        function pointerToCanvasXY(ev) {
+            const rect = canvas.getBoundingClientRect();
+            const sx = canvas.width / Math.max(rect.width, 1);
+            const sy = canvas.height / Math.max(rect.height, 1);
+            return {
+                x: (ev.clientX - rect.left) * sx,
+                y: (ev.clientY - rect.top) * sy
+            };
+        }
+
         function tick() {
             if (!seqOn || !isStarted) return;
             const interval = 12000 / tempo;
@@ -746,9 +763,10 @@
 
         function handlePointerDown(e) {
             e.preventDefault();
-            const idx = tubes.findIndex(t => t.hit(e.clientX, e.clientY));
+            const p = pointerToCanvasXY(e);
+            const idx = tubes.findIndex(t => t.hit(p.x, p.y));
             if (idx !== -1) {
-                const vel = 0.8 + (1 - e.clientY / height) * 0.8;
+                const vel = 0.8 + (1 - p.y / height) * 0.8;
                 tubes[idx].strike(vel, 0.5 + Math.random() * 0.3);
                 activeTouches.set(e.pointerId, { tubeIndex: idx, lastRetriggerTime: Date.now(), velocity: vel });
             }
@@ -757,10 +775,11 @@
         function handlePointerMove(e) {
             e.preventDefault();
             if (activeTouches.has(e.pointerId)) {
-                const idx = tubes.findIndex(t => t.hit(e.clientX, e.clientY));
+                const p = pointerToCanvasXY(e);
+                const idx = tubes.findIndex(t => t.hit(p.x, p.y));
                 const data = activeTouches.get(e.pointerId);
                 if (idx !== -1 && idx !== data.tubeIndex) {
-                    const vel = 0.8 + (1 - e.clientY / height) * 0.8;
+                    const vel = 0.8 + (1 - p.y / height) * 0.8;
                     tubes[idx].strike(vel, 0.5 + Math.random() * 0.3);
                     data.tubeIndex = idx;
                     data.velocity = vel;
@@ -793,6 +812,13 @@
             canvas.onpointerdown = handlePointerDown;
             canvas.onpointermove = handlePointerMove;
             canvas.onpointerup = canvas.onpointercancel = canvas.onpointerout = handlePointerUp;
+
+            canvas.addEventListener('touchstart', (ev) => {
+                if (ev.target === canvas && ev.cancelable) ev.preventDefault();
+            }, { passive: false });
+            canvas.addEventListener('gesturestart', (ev) => ev.preventDefault());
+            canvas.addEventListener('gesturechange', (ev) => ev.preventDefault());
+            canvas.addEventListener('gestureend', (ev) => ev.preventDefault());
 
             // Slider handlers
             document.getElementById('tempo-slider').oninput = (e) => {

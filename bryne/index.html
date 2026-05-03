@@ -340,8 +340,8 @@
             </div>
             <div class="control-row">
                 <span class="label">Reso</span>
-                <input type="range" id="param-reso" min="0" max="100" value="75">
-                <span class="value" id="val-reso">75</span>
+                <input type="range" id="param-reso" min="0" max="100" value="30">
+                <span class="value" id="val-reso">30</span>
             </div>
             <div class="control-row">
                 <span class="label">Env</span>
@@ -355,8 +355,8 @@
             </div>
             <div class="control-row">
                 <span class="label">Dist</span>
-                <input type="range" id="param-dist" min="0" max="100" value="40">
-                <span class="value" id="val-dist">40</span>
+                <input type="range" id="param-dist" min="0" max="100" value="72">
+                <span class="value" id="val-dist">72</span>
             </div>
         </div>
     </div>
@@ -379,8 +379,14 @@
         let STEP_TIME = SECONDS_PER_BEAT / 4;
         const RECORD_INTERVAL = 30;
 
+        function distortSliderToAmount(norm01) {
+            const u = Math.min(1, Math.max(0, norm01));
+            // Steep curve: clean / subtle in lower half, most drive sweep in upper half
+            return Math.pow(u, 3.35);
+        }
+
         let state = {
-            params: { reso: 0.75, env: 0.7, decay: 0.4, dist: 0.4 },
+            params: { reso: 0.3, env: 0.7, decay: 0.4, dist: distortSliderToAmount(0.72) },
             touches: new Map(),
             activeVoices: new Map(),
             sequence: Array(STEP_COUNT).fill(null).map(() => []),
@@ -447,12 +453,12 @@
             },
 
             makeDistCurve(amount) {
-                const k = amount * 150;
                 const samples = 256;
                 const curve = new Float32Array(samples);
+                const gain = amount * (95 + 155 * amount * amount);
                 for (let i = 0; i < samples; i++) {
                     const x = (i * 2) / samples - 1;
-                    curve[i] = Math.tanh(x * (1 + k)) * 0.9;
+                    curve[i] = Math.tanh(x * (1 + gain)) * 0.9;
                 }
                 return curve;
             },
@@ -503,7 +509,7 @@
 
             playScheduledNote(id, x, y, time, duration = 0.2, movements = []) {
                 const noteVal = 1 - y;
-                const noteIndex = Math.floor(noteVal * 36);
+                const noteIndex = Math.floor(noteVal * 48);
                 const freq = BASE_FREQ * Math.pow(2, noteIndex / 12);
 
                 const osc = this.ctx.createOscillator();
@@ -557,7 +563,7 @@
                     movements.forEach(m => {
                         const moveTime = time + (m.time / 1000);
                         const mVal = 1 - m.y;
-                        const mFreq = BASE_FREQ * Math.pow(2, Math.floor(mVal * 36) / 12);
+                        const mFreq = BASE_FREQ * Math.pow(2, Math.floor(mVal * 48) / 12);
                         osc.frequency.setTargetAtTime(mFreq, moveTime, 0.03);
                         sub.frequency.setTargetAtTime(mFreq / 2, moveTime, 0.03);
                     });
@@ -567,7 +573,7 @@
             noteOn(id, x, y) {
                 const now = this.ctx.currentTime;
                 const noteVal = 1 - y;
-                const noteIndex = Math.floor(noteVal * 36);
+                const noteIndex = Math.floor(noteVal * 48);
                 const freq = BASE_FREQ * Math.pow(2, noteIndex / 12);
 
                 const osc = this.ctx.createOscillator();
@@ -628,7 +634,7 @@
 
                 const now = this.ctx.currentTime;
                 const noteVal = 1 - y;
-                const noteIndex = Math.floor(noteVal * 36);
+                const noteIndex = Math.floor(noteVal * 48);
                 const freq = BASE_FREQ * Math.pow(2, noteIndex / 12);
 
                 voice.osc.frequency.setTargetAtTime(freq, now, 0.03);
@@ -1025,12 +1031,18 @@
                 if (mouseId) { endTouch(mouseId); mouseId = null; }
             });
 
-            ['reso', 'env', 'decay', 'dist'].forEach(id => {
+            ['reso', 'env', 'decay'].forEach(id => {
                 document.getElementById(`param-${id}`).addEventListener('input', (e) => {
                     state.params[id] = parseFloat(e.target.value) / 100;
                     document.getElementById(`val-${id}`).innerText = e.target.value;
                     Synth.updateParams();
                 });
+            });
+            document.getElementById('param-dist').addEventListener('input', (e) => {
+                const raw = parseFloat(e.target.value) / 100;
+                state.params.dist = distortSliderToAmount(raw);
+                document.getElementById('val-dist').innerText = e.target.value;
+                Synth.updateParams();
             });
 
             document.getElementById('clear-btn').addEventListener('click', () => {

@@ -731,9 +731,6 @@
                 const endTouch = () => {
                     this.isTouching = false;
                     this.touchIndicator.style.display = 'none';
-                    if (this.audio.touchFilter) {
-                        this.audio.touchFilter.frequency.setTargetAtTime(18000, this.audio.ctx.currentTime, 0.3);
-                    }
                 };
 
                 this.canvas.addEventListener('mousedown', startTouch);
